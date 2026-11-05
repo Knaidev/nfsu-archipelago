@@ -92,5 +92,5 @@ class NFSUWorld(World):
             data[name] = option_value(self.options, name)
         data["star_gate_by_tier"] = {str(t): star_gate(self, t) for t in range(1, 6)}
         data["starting_car"] = self.starting_car
-        data["world_version"] = "0.1.0"
+        data["world_version"] = "0.1.1"
         return data
