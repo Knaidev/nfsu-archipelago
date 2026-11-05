@@ -1,0 +1,13 @@
+﻿# Need for Speed: Underground – "Hardcore" preset
+name: NFSU_Hardcore
+description: Strict logic, one random starter car, Bank only from items
+game: Need for Speed Underground
+requires:
+  version: 0.6.8
+
+Need for Speed Underground:
+  goal: finale
+  logic_strictness: strict
+  starting_car: random_starter
+  vanilla_bank_rewards: false
+  death_link: false   # true: losing a race kills others, a received death blows your engine

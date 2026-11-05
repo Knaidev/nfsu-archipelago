@@ -1,0 +1,13 @@
+﻿# Need for Speed: Underground – "Standard" preset (the defaults)
+name: NFSU_Standard
+description: Normal logic, cars as items, vanilla starter cars
+game: Need for Speed Underground
+requires:
+  version: 0.6.8
+
+Need for Speed Underground:
+  goal: finale
+  logic_strictness: normal
+  bank_multiplier: 100
+  cars_as_items: true
+  starting_car: vanilla

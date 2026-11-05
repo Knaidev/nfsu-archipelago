@@ -1,0 +1,7 @@
+# Local Archipelago checkout, venv, generated seeds/templates (see tools/ for how to recreate)
+.archipelago/
+__pycache__/
+*.pyc
+build/
+# RAM dumps from tools/pine_memscan.py
+tools/scans/

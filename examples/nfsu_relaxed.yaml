@@ -1,0 +1,13 @@
+﻿# Need for Speed: Underground – "Relaxed" preset
+name: NFSU_Relaxed
+description: Loose logic, lower star gates, more Bank
+game: Need for Speed Underground
+requires:
+  version: 0.6.8
+
+Need for Speed Underground:
+  goal: finale
+  logic_strictness: loose
+  star_gate_scale: 75
+  bank_multiplier: 200
+  starting_bank: 5000
