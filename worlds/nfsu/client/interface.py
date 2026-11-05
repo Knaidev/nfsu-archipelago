@@ -339,8 +339,15 @@ class NFSUInterface:
         if not racers:
             return None
         base = self.pine.read32(self._a("race_info_pointer"))
-        pointer = base + a.race_position_offset + 4 * racers
-        for offset in (0, a.racer_sim_offset, a.sim_engine_heat_offset):
+        # The racer pointers follow the position list, which has room for 4 racers: in a drift (only the player)
+        # the free slots hold 0xAAAAAAAA and the player's racer pointer is 4 slots in (seen in game). So take
+        # the first heap pointer behind the used positions.
+        start = base + a.race_position_offset + 4 * racers
+        words = self.pine.batch_read([(start + 4 * i, 4) for i in range(a.race_max_racers)])
+        pointer = next((w for w in words if a.heap_pointer_min <= w < 0x02000000), None)
+        if pointer is None:
+            return None
+        for offset in (a.racer_sim_offset, a.sim_engine_heat_offset):
             pointer = self.pine.read32(pointer + offset)
             if not a.heap_pointer_min <= pointer < 0x02000000:   # on the results screen the chain is stale
                 return None

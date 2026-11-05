@@ -30,7 +30,7 @@ class NFSUCommandProcessor(ClientCommandProcessor):
                     f"(slot {ctx.game_interface.pine.slot}). Reconnecting…")
         return True
 
-    def _cmd_nfsu(self) -> bool:
+    def _cmd_nfsu(self, *_ignored: str) -> bool:
         """Show stars, open tiers, time trials and features that still lack memory addresses."""
         ctx: NFSUContext = self.ctx  # type: ignore
         sync = ctx.sync

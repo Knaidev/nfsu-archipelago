@@ -249,8 +249,10 @@ PART_CATEGORY_ID: Dict[str, int] = {
     "Vinyl": 7, "Spoiler": 8, "Front Bumper": 9, "Taillights": 10, "Rear Bumper": 11, "Hood": 12,
     "Roof Scoop": 13, "Neon": 14, "Wide Body Kit": 15,
     # performance (data/parts.py PERFORMANCE names)
-    "Nitrous": 16, "Brakes": 17, "Engine/Exhaust": 18, "Drivetrain": 19, "Tires": 20, "Suspension": 21,
-    "Turbo": 22, "ECU & Fuel": 23, "Weight Reduction": 24,
+    # 16/24 live-corrected: a Progressive Nitrous item (id 16 at the time) unlocked the Weight Reduction
+    # kit in the shop. Brakes and Tires are live-confirmed; Suspension 21 is not confirmed yet.
+    "Weight Reduction": 16, "Brakes": 17, "Engine/Exhaust": 18, "Drivetrain": 19, "Tires": 20, "Suspension": 21,
+    "Turbo": 22, "ECU & Fuel": 23, "Nitrous": 24,
 }
 
 #: Unique (Level 4) parts per choice event (wiki numbers): the categories the game lists for that event.

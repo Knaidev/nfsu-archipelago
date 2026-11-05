@@ -541,6 +541,83 @@ class TestRaces(ClientTestBase):
         self.assertEqual(self.server.u32(MAP.engine_heat_enabled), 0, "heat check switched off again")
         self.assertIsNone(sync.tick([], set()).send_death)
 
+    def test_received_death_blows_engine_in_drift(self):
+        """Seen in game (drift): only the player is listed, the free position slots hold 0xAAAAAAAA and the
+        racer pointer comes after 4 slots. Before the fix a received death only drained the nitrous."""
+        sync = self.make_sync(death_link=True)
+        self.drag(sync, positions=(1, 0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA))
+        self.server.u32(MAP.engine_heat_enabled, 0)                 # drift: no heat simulation
+        sync.tick([], set())
+        sync.receive_death()
+        out = sync.tick([], set())
+        self.assertIn("Death Link: engine blown.", out.messages)
+        self.assertEqual((self.server.u32(MAP.engine_heat_enabled), self.blown()), (1, 1))
+        self.assertIsNone(out.send_death)
+
+    def drift_on_connect(self, sync):
+        """Drift already running when the client connects (no race start seen), then a received death."""
+        self.server.u32(MAP.engine_heat_enabled, 0)
+        self.server.u32(MAP.race_info_pointer, self.INFO)
+        for i, p in enumerate([1, 0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA, self.RACER]):
+            self.server.u32(self.INFO + MAP.race_position_offset + 4 * i, p)
+        self.server.u32(self.RACER + MAP.racer_sim_offset, self.SIM)
+        self.server.u32(self.SIM + MAP.sim_engine_heat_offset, self.HEAT)
+        self.server.u32(MAP.race_active, 1)
+        sync.tick([], set())
+        sync.receive_death()
+        sync.tick([], set())
+        self.assertEqual(self.server.u32(MAP.engine_heat_enabled), 1)
+        sync.tick([], set())
+        self.assertEqual(self.server.u32(MAP.engine_heat_enabled), 1, "stays on until the attempt is over")
+
+    def test_heat_flag_off_at_results_when_connected_mid_race(self):
+        """Seen in game: client connected during a drift, received death -> results -> restart ran as drag."""
+        sync = self.make_sync(death_link=True)
+        self.drift_on_connect(sync)
+        self.results(True, [1])
+        sync.tick([], set())
+        self.assertEqual(self.server.u32(MAP.engine_heat_enabled), 0)
+
+    def test_heat_flag_off_when_race_restarted_after_received_death(self):
+        sync = self.make_sync(death_link=True)
+        self.drift_on_connect(sync)
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 0)    # restarted: fresh engine
+        sync.tick([], set())
+        self.assertEqual(self.server.u32(MAP.engine_heat_enabled), 0)
+
+    def test_no_death_from_stale_heat_after_a_win(self):
+        """Seen in game (#11 drag): won, then 2 s later the stale heat object read "blown" -> false death."""
+        sync = self.make_sync(death_link=True)
+        self.drag(sync, positions=(1, 2, 3, 4))
+        self.results(False, [1, 2, 3, 4])
+        self.server.u32(self.INFO + MAP.race_position_offset + 16, self.RACER)
+        self.assertIsNone(sync.tick([], set()).send_death)          # won
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 1)    # stale pointer on the results screen
+        out = sync.tick([], set())
+        self.assertIsNone(out.send_death)
+        self.assertNotIn("Race result: lost, blown engine", out.messages)
+
+    def test_blown_engine_and_lost_result_send_one_death(self):
+        """Seen in game: own blowout, then the results popup "lost, 4 of 4" -> two deaths were sent."""
+        sync = self.make_sync(death_link=True)
+        self.drag(sync)
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 1)
+        self.assertIsNotNone(sync.tick([], set()).send_death)
+        self.results(True, [4, 1, 2, 3])
+        self.server.u32(self.INFO + MAP.race_position_offset + 16, self.RACER)
+        self.assertIsNone(sync.tick([], set()).send_death)
+
+    def test_received_death_not_echoed_when_flag_flickers(self):
+        """Seen in game: received death -> blown 1, 0, 1 within seconds -> a death was sent back."""
+        sync = self.make_sync(death_link=True)
+        self.drag(sync)
+        sync.receive_death()
+        self.assertIsNone(sync.tick([], set()).send_death)
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 0)
+        self.assertIsNone(sync.tick([], set()).send_death)
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 1)
+        self.assertIsNone(sync.tick([], set()).send_death)
+
     def test_no_blown_engine_outside_drag(self):
         sync = self.make_sync(death_link=True)
         self.drag(sync)

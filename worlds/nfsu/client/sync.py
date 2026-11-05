@@ -405,8 +405,10 @@ class GameSync:
         self.result_handled = False
         self.death_pending = False
         self.death_forced = False
+        self.death_sent = False   # a death was sent for the current race attempt
         self.blown_handled = False
         self.heat_switched_on = False
+        self.heat_blow_seen = False   # the engine read "blown" after we switched the heat check on
         self.reputation: Optional[float] = None
         self.results: Dict[int, int] = {}
 
@@ -484,6 +486,7 @@ class GameSync:
                 self.race_seen = True
                 self.result_handled = False
                 self.death_forced = False
+                self.death_sent = False
                 out.messages += self.traps.race_started(game, self.run)
             if racing and self.death_pending:
                 self.death_pending = False
@@ -501,33 +504,58 @@ class GameSync:
             if self.race_seen:
                 result = self.run("race result", game.race_result)
                 if result is None:
-                    if racing and self.result_handled:
+                    if racing and self.result_handled:   # restarted from the results screen: a new attempt
                         self.result_handled = False
+                        self.blown_handled = False
                         self.death_forced = False
+                        self.death_sent = False
                 elif not self.result_handled:
                     self.result_handled = True
                     out.messages.append("Race result: %s, position %s of %s" % (
                         "won" if result.won else "lost", result.position or "?", result.racers or "?"))
-                    if s.death_link and self.death.should_send(result, self.death_forced):
+                    # One death per attempt: none after a blown engine already sent one or a received death.
+                    if (s.death_link and not self.death_sent and not self.blown_handled
+                            and self.death.should_send(result, self.death_forced)):
                         out.send_death = "lost a street race" if not result.last_place else "finished dead last"
-            # Drag: a blown engine drops the player without results popups (the game pauses instead).
-            if self.race_seen and racing:
+                        self.death_sent = True
+            # Drag: a blown engine drops the player (pause menu or results). Only checked before the result is
+            # known: on the results screen the heat object is stale and can read as "blown" after a win.
+            if self.race_seen and racing and not self.result_handled:
                 blown = self.run("engine state", game.engine_blown)
                 if blown and not self.blown_handled:
                     self.blown_handled = True
                     out.messages.append("Race result: lost, blown engine")
-                    if s.death_link and self.death.should_send(RaceResult(False), self.death_forced):
+                    if (s.death_link and not self.death_sent
+                            and self.death.should_send(RaceResult(False), self.death_forced)):
                         out.send_death = "blew the engine"
-                elif blown is False and self.blown_handled:   # race restarted from the pause menu
+                        self.death_sent = True
+                elif blown is False and self.blown_handled:
+                    # Race restarted from the pause menu: an own blowout counts again. death_forced stays set
+                    # until the race is left or restarted from the results screen, so a received death is never
+                    # echoed back (seen in game: the flag read 1, 0, 1 after a received death).
                     self.blown_handled = False
-                    self.death_forced = False
+                    self.death_sent = False
             elif not racing:
                 self.blown_handled = False
-            # A received death switched the engine heat check on outside drag: off again once the race is over
-            # (results popups shown or back on the map), so a restarted race does not overheat.
-            if self.heat_switched_on and (not racing or (self.race_seen and self.result_handled)):
-                self.heat_switched_on = False
-                self.run("engine heat", game.set_engine_heat_enabled, False)
+            # A received death switched the engine heat check on outside drag: off again once that attempt is over
+            # (results popups shown, engine no longer blown = restarted, or back on the map). Independent of
+            # race_seen: in one test the client connected during a drift, the flag stayed 1 and the restarted
+            # drift ran as a drag race.
+            if self.heat_switched_on:
+                over = not racing
+                if racing:
+                    if self.run("race result", game.race_result) is not None:
+                        over = True
+                    else:
+                        blown = self.run("engine state", game.engine_blown)
+                        if blown:
+                            self.heat_blow_seen = True
+                        elif blown is False and self.heat_blow_seen:
+                            over = True
+                if over:
+                    self.heat_switched_on = False
+                    self.heat_blow_seen = False
+                    self.run("engine heat", game.set_engine_heat_enabled, False)
         if self.death_pending and racing is False:
             self.death_pending = False
             out.messages.append("Death Link received outside a race – ignored.")
