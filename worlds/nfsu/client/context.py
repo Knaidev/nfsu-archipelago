@@ -65,23 +65,6 @@ class NFSUCommandProcessor(ClientCommandProcessor):
         self.output(f"Death Link {state.lower()}.")
         return True
 
-    def _cmd_debug_win(self, event: str = "", difficulty: str = "easy") -> bool:
-        """DEBUG/TEST ONLY: act as if an event was won, e.g. /debug_win 12 medium. Sends its checks.
-        Meant for testing the item flow before the game's memory addresses are known."""
-        ctx: NFSUContext = self.ctx  # type: ignore
-        diffs = {"easy": 0, "medium": 1, "hard": 2, "0": 0, "1": 1, "2": 2}
-        if ctx.sync is None or not ctx.server:
-            self.output("Connect to the Archipelago server first.")
-            return False
-        if not event.isdigit() or not 1 <= int(event) <= 111 or difficulty.lower() not in diffs:
-            self.output("Usage: /debug_win <event 1-111> [easy|medium|hard]")
-            return False
-        result = ctx.sync.debug_win(int(event), diffs[difficulty.lower()])
-        logger.warning("DEBUG: treating #%s as won on %s.", event, difficulty)
-        from Utils import async_start
-        async_start(ctx.send_debug_result(result))
-        return True
-
 
 class ServerCounterStore(CounterStore):
     """Received-item counter in Archipelago's data storage (one key per team/slot).
@@ -164,15 +147,6 @@ class NFSUContext(CommonContext):
                 self.sync.banners.sent(name, self.player_names[receiving])
         except (KeyError, AttributeError):
             pass
-
-    async def send_debug_result(self, result) -> None:
-        if result.new_checks:
-            await self.check_locations(result.new_checks)
-        if result.goal and not self.goal_sent:
-            self.goal_sent = True
-            self.finished_game = True
-            await self.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
-            logger.info("Goal complete!")
 
     def set_death_link(self, enabled: bool) -> None:
         self.death_link_override = enabled

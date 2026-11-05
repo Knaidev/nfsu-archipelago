@@ -396,7 +396,6 @@ class GameSync:
         self.car_patch_logged: Optional[bool] = None
         self.known_difficulty: Dict[int, int] = {}
         self.banners = BannerQueue(clock)
-        self.debug_results: Dict[int, int] = {}
         self.traps = TrapManager()
         self.death = DeathLinkTracker(settings)
         self.missing: Set[str] = set()
@@ -443,7 +442,7 @@ class GameSync:
         results = None
         if in_memory is not None:
             # Game memory + server checks + what this session already saw.
-            results = merge_results(self.results, self.debug_results, results_from_checks(checked), in_memory)
+            results = merge_results(self.results, results_from_checks(checked), in_memory)
             self.results = results
             earned = checks_for_results(results)
             out.new_checks = earned - checked
@@ -633,14 +632,6 @@ class GameSync:
             self.known_difficulty[n] = max(self.known_difficulty.get(n, 0), d)
             out[n] = d
         self.won_seen = set(raw)
-        return out
-
-    def debug_win(self, event: int, difficulty: int) -> TickResult:
-        """Debug: behave as if `event` was won on `difficulty` (for testing without memory addresses)."""
-        self.debug_results = merge_results(self.debug_results, {event: difficulty})
-        self.results = merge_results(self.results, self.debug_results)
-        out = TickResult(new_checks=checks_for_results({event: difficulty}))
-        out.goal = goal_reached(self.results, self.s)
         return out
 
     def _apply_death(self) -> str:

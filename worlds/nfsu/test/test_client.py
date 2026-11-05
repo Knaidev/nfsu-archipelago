@@ -849,19 +849,6 @@ class TestBanner(ClientTestBase):
         self.assertLessEqual(len(sync.banners.queue), 20)
 
 
-class TestDebugWin(ClientTestBase):
-    def test_debug_win_sends_checks_and_counts_for_goal(self):
-        sync = self.make_sync(goal=1, races_for_goal=2)
-        r = sync.debug_win(12, 1)
-        self.assertEqual(r.new_checks, C(12))
-        self.assertFalse(r.goal)
-        self.assertTrue(sync.debug_win(13, 0).goal)
-
-    def test_debug_win_finale(self):
-        sync = self.make_sync()
-        self.assertTrue(sync.debug_win(111, 0).goal)
-
-
 class TestPlaceholders(ClientTestBase):
     def test_unmapped_addresses_do_not_crash(self):
         interface_mod.ADDRESSES[TEST_SERIAL] = AddressMap()
