@@ -10,4 +10,6 @@ Need for Speed Underground:
   logic_strictness: strict
   starting_car: random_starter
   vanilla_bank_rewards: false
+  star_gates: true           # tiers 2-4 also need 2/3/4 stars
+  starting_event_packs: 1
   death_link: false   # true: losing a race kills others, a received death blows your engine

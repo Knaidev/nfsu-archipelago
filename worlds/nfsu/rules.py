@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING
 
 from BaseClasses import CollectionState
-from worlds.generic.Rules import set_rule
+from worlds.generic.Rules import add_rule, set_rule
 
 from .items import FINALE_ITEM, KEY_ITEM, RACE_WON, TIME_TRIAL_WON, VICTORY
 from .locations import (CHECK_EVENTS, CHOICE_EVENT_DATA, GOAL_LOCATION, TIER_REGION, base_check_names,
                         style_check_name, style_tier, tier_of, won_name)
 from .logic import has_parts, has_stars, part_requirement, star_gate
 from .options import option_value
+from .packs import pack_of
 
 if TYPE_CHECKING:
     from .world import NFSUWorld
@@ -58,6 +59,21 @@ def set_all_rules(world: "NFSUWorld") -> None:
         rule = _parts_rule(world, style_tier(i), "Sprint")
         if rule is not None:
             set_rule(world.get_location(style_check_name(i)), rule)
+
+    # Event Packs: an event's checks need its pack. Tournaments need their reputation stars in game (record
+    # +24 = events.py reputation_required, seen in game), whatever the star gate options say.
+    event_pack = pack_of(world.packs)
+    per_event = [(e, base_check_names(e) + ([won_name(e)] if race_count_goal else [])) for e in CHECK_EVENTS]
+    per_event += [(e, [won_name(e)]) for e in CHOICE_EVENT_DATA if e.race_type == "Time Trial"]
+    for event, names in per_event:
+        pack = event_pack.get(event.number)
+        stars = event.reputation_required or 0
+        for name in names:
+            location = world.get_location(name)
+            if pack is not None:
+                add_rule(location, lambda state, pack=pack: state.has(pack, player))
+            if stars > 0:
+                add_rule(location, lambda state, stars=stars: has_stars(state, player, stars))
 
     if race_count_goal:
         needed = opts.races_for_goal.value

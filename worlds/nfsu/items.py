@@ -5,6 +5,7 @@ from BaseClasses import Item, ItemClassification as IC
 from .data.cars import CARS, STARTER_CARS, UNLOCKABLE_CARS
 from .data.parts import PERFORMANCE, UNIQUE_REWARDS, VISUAL
 from .options import TRAPS, option_value
+from .packs import PACK_ITEM_NAMES
 
 if TYPE_CHECKING:
     from .world import NFSUWorld
@@ -89,6 +90,8 @@ def _build_table() -> Dict[str, ItemData]:
         add(name, IC.filler, "Bank")
     for trap in TRAPS:
         add(trap, IC.trap, "Traps")
+    for name in PACK_ITEM_NAMES:     # 0.2: events as items (packs.py)
+        add(name, IC.progression, "Event Packs")
     return table
 
 
@@ -137,6 +140,7 @@ def progression_pool(world: "NFSUWorld") -> List[str]:
     for cat, levels in VISUAL_ITEM_LEVELS.items():
         names += [progressive_name(cat)] * len(levels)
     names += car_pool(world)
+    names += [n for n in world.pack_items if n not in world.starting_packs]
     return names
 
 

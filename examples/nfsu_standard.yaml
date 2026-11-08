@@ -11,3 +11,5 @@ Need for Speed Underground:
   bank_multiplier: 100
   cars_as_items: true
   starting_car: vanilla
+  event_packs: true          # events #6-#110 come in Event Packs
+  starting_event_packs: 2

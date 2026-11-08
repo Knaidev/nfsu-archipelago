@@ -73,10 +73,25 @@ class LogicStrictness(Choice):
     default = 1
 
 
-class StarGates(DefaultOnToggle):
-    """Lock tiers behind reputation stars from the visual parts you received (full stars, rounded down,
-    using the game's star value per level). Tier 2 needs 2 stars, Tier 3 needs 3, Tier 4 needs 4 and the
-    finale needs 5 (before scaling)."""
+class EventPacks(DefaultOnToggle):
+    """Events are items. #1-#5 are open from the start; every other event is in one of up to 54
+    "Event Pack" items, and the seed decides which events are in which pack (across all tiers).
+    Tournaments still need their reputation stars in game. Off: tiers open by Star Gates as in 0.1."""
+    display_name = "Event Packs"
+
+
+class StartingEventPacks(Range):
+    """Event Packs you start with (chosen among packs with at least one Tier 1 race)."""
+    display_name = "Starting Event Packs"
+    range_start = 0
+    range_end = 10
+    default = 2
+
+
+class StarGates(Toggle):
+    """Also lock tiers behind reputation stars from the visual parts you received (full stars, rounded down,
+    using the game's star value per level): Tier 2 needs 2 stars, Tier 3 needs 3, Tier 4 needs 4. The finale
+    always needs 5 (before scaling). Without Event Packs you most likely want this on."""
     display_name = "Star Gates"
 
 
@@ -209,6 +224,8 @@ class NFSUOptions(PerGameCommonOptions):
     time_trials_required: TimeTrialsRequired
     excluded_race_types: ExcludedRaceTypes
     logic_strictness: LogicStrictness
+    event_packs: EventPacks
+    starting_event_packs: StartingEventPacks
     star_gates: StarGates
     star_gate_scale: StarGateScale
     early_level_1_parts: EarlyLevel1Parts
@@ -242,7 +259,8 @@ def option_value(options: NFSUOptions, name: str) -> Any:
 
 OPTION_GROUPS = [
     OptionGroup("Goal and Scope", [Goal, RacesForGoal, TimeTrialsRequired, ExcludedRaceTypes]),
-    OptionGroup("Logic", [LogicStrictness, StarGates, StarGateScale, EarlyLevel1Parts, LocalKeyItems]),
+    OptionGroup("Logic", [EventPacks, StartingEventPacks, LogicStrictness, StarGates, StarGateScale,
+                          EarlyLevel1Parts, LocalKeyItems]),
     OptionGroup("Items and Economy", [CarsAsItems, StartingCar, StartingBank, BankMultiplier,
                                       VanillaBankRewards]),
     OptionGroup("Death Link", [NFSUDeathLink, DeathLinkTrigger, DeathLinkAmnesty], start_collapsed=True),

@@ -12,9 +12,11 @@ played yet. Expect bugs and please report them in the issues.
 
 - **Checks** are the game's own race rewards (one per unlock in the "Race Victory Reward" popup, "Victory" for
   events without a reward). The popup shows the Archipelago item you found.
-- **Items:** progressive performance parts, progressive visual parts per category, cars, Bank bonuses.
+- **Items:** progressive performance parts, progressive visual parts per category, cars, Event Packs, Bank bonuses.
   The client patches the shop and the car lot so that only received parts and cars can be bought.
-- **Progression:** four tiers of events, opened by reputation stars from received visual parts (star gates).
+- **Events as items:** #1–#5 are open from the start, all other events come in "Event Packs" whose contents
+  the seed decides. Tournaments and the finale need reputation stars from received visual parts; optional
+  star gates also lock whole tiers. The client fills the race map's 12 slots (`/nfsu events`, `/nfsu pin`).
 - **Goal:** win #111 "Wrath of Eddie" (needs time trials, the "Finale: #111" item and "Samantha's Big Tease"),
   or win a set number of events.
 - **Death Link:** losing a race sends a death; a received death blows your engine ("Blown Engine").

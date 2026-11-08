@@ -27,6 +27,7 @@ from ..items import (BANK_ITEMS, FINALE_ITEM, KEY_ITEM, UNIQUE_ITEM_NAMES, VISUA
 from ..data.events import CAREER_EVENTS
 from ..locations import EVENT_CHECK_IDS, tier_of
 from ..options import TRAPS
+from ..packs import START_EVENTS
 from .interface import NFSUInterface, NotMapped, RaceResult
 
 logger = logging.getLogger("NFSU")
@@ -61,6 +62,8 @@ class Settings:
     death_link_effect: int = 0    # 0 fail_race, 1 nitro_and_slowdown
     death_link_amnesty: int = 0
     starting_car: Optional[str] = None
+    #: "Event Pack N" -> event numbers (None: events are no items, tiers open by stars as in 0.1)
+    event_packs: Optional[Dict[str, List[int]]] = None
 
     @classmethod
     def from_slot_data(cls, data: Mapping[str, Any]) -> "Settings":
@@ -75,6 +78,8 @@ class Settings:
         if "star_gate_by_tier" in data:
             s.star_gate_by_tier = {int(k): int(v) for k, v in data["star_gate_by_tier"].items()}
         s.starting_car = data.get("starting_car")
+        if data.get("event_packs"):
+            s.event_packs = {str(k): [int(n) for n in v] for k, v in data["event_packs"].items()}
         return s
 
 
@@ -184,19 +189,80 @@ def open_tiers(reputation: float, s: Settings) -> Set[int]:
 
 
 def finale_open(results: Mapping[int, int], state: ItemState, s: Settings, reputation: float = 0.0) -> bool:
-    stars_ok = not s.star_gates or full_stars(reputation) >= s.star_gate_by_tier.get(5, 0)
+    # star_gate_by_tier already holds 0 where no stars are needed (0.1 seeds: all 0 with star_gates off).
+    stars_ok = full_stars(reputation) >= s.star_gate_by_tier.get(5, 0)
     return (s.goal == 0 and state.has_finale and state.has_key and stars_ok
             and time_trial_wins(results) >= s.time_trials_required)
 
 
-def open_events(reputation: float, results: Mapping[int, int], state: ItemState, s: Settings) -> Set[int]:
+#: The race map lists at most 12 open events (fixed 12-slot list, 0x00315DD8 `slti 12`, lowest number first;
+#: seen in game). The client decides which unlocked events get the slots.
+MAP_SLOTS = 12
+
+
+def received_packs(names: List[str], s: Settings) -> List[str]:
+    if not s.event_packs:
+        return []
+    got = set(names)
+    return [name for name in s.event_packs if name in got]
+
+
+def unlocked_events(names: List[str], reputation: float, s: Settings) -> Set[int]:
+    """Events the player may race (#1-#110): by Event Packs (if on) and open tiers."""
     tiers = open_tiers(reputation, s)
-    events = {n for n in PLAYABLE_EVENTS if tier_of(n) in tiers}
+    if s.event_packs is None:
+        events = set(PLAYABLE_EVENTS)
+    else:
+        events = set(START_EVENTS)
+        for name in received_packs(names, s):
+            events.update(s.event_packs[name])
+    return {n for n in events if tier_of(n) in tiers}
+
+
+def event_label(number: int) -> str:
+    e = EVENTS_BY_NUMBER[number]
+    return "#%d %s%s" % (number, e.name, " (%d★)" % e.reputation_required if e.reputation_required else "")
+
+
+def can_enter(number: int, reputation: float) -> bool:
+    """Tournaments need their reputation stars in game ("This Tournament requires 3 reputation stars")."""
+    return full_stars(reputation) >= (EVENTS_BY_NUMBER[number].reputation_required or 0)
+
+
+def map_events(unlocked: Set[int], results: Mapping[int, int], reputation: float,
+               pinned: List[int] = ()) -> List[int]:
+    """Unlocked, not yet won events in map order: pinned ones, then enterable ones, then the rest (each by
+    number). The first MAP_SLOTS of them are opened in game."""
+    todo = [n for n in sorted(unlocked) if n not in results]
+    pins = [n for n in pinned if n in todo]
+    rest = [n for n in todo if n not in pins]
+    return pins + [n for n in rest if can_enter(n, reputation)] + [n for n in rest if not can_enter(n, reputation)]
+
+
+def pin_problem(number: int, names: List[str], reputation: float, results: Mapping[int, int],
+                s: Settings) -> Optional[str]:
+    """Why an event cannot be pinned to the race map, or None if it can."""
+    if number not in PLAYABLE_EVENTS:
+        return f"#{number} is not a career event that can be pinned (#1-#110)."
+    if number in results:
+        return f"#{number} is already done (won, or its checks were already sent)."
+    if number not in unlocked_events(list(names), reputation, s):
+        if s.event_packs is not None and number not in START_EVENTS and not any(
+                number in s.event_packs[name] for name in received_packs(list(names), s)):
+            return f"#{number} is not unlocked yet: its Event Pack has not arrived."
+        return f"#{number} is in a tier that needs more stars."
+    return None
+
+
+def open_events(reputation: float, results: Mapping[int, int], state: ItemState, s: Settings,
+                names: List[str] = (), pinned: List[int] = ()) -> Set[int]:
+    special = set()
     if finale_open(results, state, s, reputation):
-        events.add(GOAL_EVENT)
+        special.add(GOAL_EVENT)
     if GOAL_EVENT in results:
-        events.add(EPILOGUE_EVENT)  # with the map patch the game no longer unlocks the epilogue by itself
-    return events
+        special.add(EPILOGUE_EVENT)  # with the map patch the game no longer unlocks the epilogue by itself
+    order = map_events(unlocked_events(list(names), reputation, s), results, reputation, pinned)
+    return special | set(order[:MAP_SLOTS - len(special)])
 
 
 def goal_reached(results: Mapping[int, int], s: Settings) -> bool:
@@ -411,6 +477,8 @@ class GameSync:
         self.heat_blow_seen = False   # the engine read "blown" after we switched the heat check on
         self.reputation: Optional[float] = None
         self.results: Dict[int, int] = {}
+        self.pinned: List[int] = []                  # /nfsu pin: events that get a race map slot first
+        self.packs_seen: Optional[Set[str]] = None
 
     # Calls `fn`; a NotMapped address disables the feature for this tick and is reported once.
     def run(self, feature: str, fn: Callable, *args):
@@ -467,10 +535,12 @@ class GameSync:
         if state.cars is not None:
             self._sync_car_unlocks(state.cars)
         self.reputation = received_reputation(received)
+        out.messages += self._announce_packs(received)
         if results is not None and self._availability_patch_active():
             try:
                 # Won events stay won (no checks per difficulty -> nothing to re-open).
-                game.set_events_available(open_events(self.reputation, results, state, s), in_memory, ())
+                game.set_events_available(open_events(self.reputation, results, state, s, received, self.pinned),
+                                          in_memory, ())
             except NotMapped as e:
                 self._report_missing("event availability", e)
 
@@ -661,6 +731,19 @@ class GameSync:
             out[n] = d
         self.won_seen = set(raw)
         return out
+
+    def _announce_packs(self, received: List[str]) -> List[str]:
+        """One line per newly received Event Pack (a summary on the first tick after connecting)."""
+        packs = set(received_packs(received, self.s))
+        if self.packs_seen is None:
+            self.packs_seen = packs
+            if not self.s.event_packs:
+                return []
+            return ["Event Packs: %d of %d received, %d events unlocked (/nfsu events lists them)." % (
+                len(packs), len(self.s.event_packs), len(unlocked_events(received, 99.0, self.s)))]
+        new = [name for name in self.s.event_packs or () if name in packs - self.packs_seen]
+        self.packs_seen = packs
+        return ["%s: %s" % (name, ", ".join(event_label(n) for n in self.s.event_packs[name])) for name in new]
 
     def _apply_death(self) -> str:
         """Applies a received death; returns what happened (for the log)."""

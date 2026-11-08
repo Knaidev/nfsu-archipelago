@@ -54,7 +54,8 @@ def part_requirement(world: "NFSUWorld", tier: int, race_type: str) -> Tuple[int
 
 
 def star_gate(world: "NFSUWorld", tier: int) -> int:
-    if not world.options.star_gates:
+    """Stars needed to enter a tier. The finale (5) is always gated; Tiers 2-4 only with star_gates."""
+    if tier < 5 and not world.options.star_gates:
         return 0
     return BASE_STAR_GATES[tier] * world.options.star_gate_scale.value // 100
 

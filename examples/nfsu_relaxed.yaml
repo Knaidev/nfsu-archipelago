@@ -8,6 +8,7 @@ requires:
 Need for Speed Underground:
   goal: finale
   logic_strictness: loose
-  star_gate_scale: 75
+  star_gate_scale: 75        # finale needs 3 stars instead of 5
+  starting_event_packs: 4
   bank_multiplier: 200
   starting_bank: 5000

@@ -239,19 +239,19 @@ class TestChecksAndEvents(ClientTestBase):
         self.assertEqual(sync.tick([], C(3)).new_checks, set())
 
     def test_choice_events_open_but_send_nothing(self):
-        sync = self.make_sync()
+        sync = self.make_sync(event_packs={"Event Pack 1": [7, 15]})
         self.server.event(7, status=2, diff=2)                 # TJ's Time Trial won on Hard
-        self.assertEqual(sync.tick([], set()).new_checks, set())
+        self.assertEqual(sync.tick(["Event Pack 1"], set()).new_checks, set())
         self.assertEqual(self.server.event(7)[0], MAP.event_status_won, "not re-opened, no checks")
         self.assertEqual(self.server.event(15)[0], MAP.event_status_available, "time trials are playable")
 
     def test_star_gates_open_tiers(self):
-        sync = self.make_sync()
-        sync.tick([], set())
+        sync = self.make_sync(event_packs={"Event Pack 1": [10, 31, 70, 92]})
+        sync.tick(["Event Pack 1"], set())
         self.assertEqual(self.server.event(10)[0], MAP.event_status_available)   # tier 1
         self.assertEqual(self.server.event(31)[0], MAP.event_status_locked, "no stars yet")
         # Level 3 front and rear bumper (two items each) = 2.2 stars -> 2 full stars -> tier 2, but not tier 3.
-        parts = ["Progressive Front Bumper"] * 2 + ["Progressive Rear Bumper"] * 2
+        parts = ["Event Pack 1"] + ["Progressive Front Bumper"] * 2 + ["Progressive Rear Bumper"] * 2
         sync.tick(parts, set())
         self.assertEqual(self.server.event(31)[0], MAP.event_status_available)   # tier 2 (2 stars)
         self.assertEqual(self.server.event(70)[0], MAP.event_status_locked)      # tier 3 (3 stars)
@@ -269,7 +269,8 @@ class TestChecksAndEvents(ClientTestBase):
         self.assertEqual(self.server.event(111)[0], MAP.event_status_locked, "finale needs 5 stars")
 
     def test_finale_unlock_and_goal(self):
-        sync = self.make_sync(time_trials_required=7, star_gates=False)
+        sync = self.make_sync(time_trials_required=7, star_gates=False,
+                              star_gate_by_tier={1: 0, 2: 0, 3: 0, 4: 0, 5: 0})   # 0.1 seed
         for tt in (7, 15, 26, 47, 68, 77):
             self.server.event(tt, status=2, diff=0)
         items = ["Finale: #111", "Samantha's Big Tease"]
@@ -745,9 +746,86 @@ class TestMapPatch(ClientTestBase):
         self.assertEqual(self.server.event(10)[0], 0, "no availability writes without the patch")
 
     def test_events_of_several_sets_open_at_once(self):
-        self.make_sync().tick([], set())
-        self.assertEqual([self.server.event(n)[0] for n in (1, 6, 14, 29)], [1, 1, 1, 1])
-        self.assertEqual(self.server.event(30)[0], 0)
+        sync = self.make_sync(event_packs={"Event Pack 1": [6, 12, 29], "Event Pack 2": [9]})
+        sync.tick(["Event Pack 1"], set())
+        self.assertEqual([self.server.event(n)[0] for n in (1, 6, 12, 29)], [1, 1, 1, 1])
+        self.assertEqual([self.server.event(n)[0] for n in (9, 30)], [0, 0], "pack not received / no pack")
+
+
+class TestEventPacks(ClientTestBase):
+    PACKS = {"Event Pack 1": [6, 8, 9, 10, 11, 12, 13, 14], "Event Pack 2": [16, 17, 18, 19, 20],
+             "Event Pack 3": [21, 22]}
+
+    def opened(self):
+        return {n for n in range(1, 113) if self.server.event(n)[0] == MAP.event_status_available}
+
+    def test_settings_from_slot_data(self):
+        s = Settings.from_slot_data({"event_packs": {"Event Pack 1": ["6", 8]}})
+        self.assertEqual(s.event_packs, {"Event Pack 1": [6, 8]})
+        self.assertIsNone(Settings.from_slot_data({"event_packs": None}).event_packs)
+
+    def test_map_holds_twelve_enterable_events_first(self):
+        from ..client.sync import MAP_SLOTS
+        sync = self.make_sync(event_packs=self.PACKS)
+        sync.tick(list(self.PACKS), set())
+        opened = self.opened()
+        self.assertEqual(len(opened), MAP_SLOTS)
+        # 1-5, 6, 8-13 = 12 enterable; #14 and #20 (1 star) and the rest wait.
+        self.assertEqual(opened, {1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13})
+
+    def test_won_events_free_their_slot(self):
+        sync = self.make_sync(event_packs=self.PACKS)
+        for n in (1, 2, 3):
+            self.server.event(n, status=2, diff=0)
+        sync.tick(list(self.PACKS), set())
+        self.assertTrue({16, 17, 18} <= self.opened())
+        self.assertEqual(self.server.event(1)[0], MAP.event_status_won)
+
+    def test_pinned_events_come_first(self):
+        sync = self.make_sync(event_packs=self.PACKS)
+        sync.pinned = [22, 14]
+        sync.tick(list(self.PACKS), set())
+        opened = self.opened()
+        self.assertTrue({22, 14} <= opened)
+        self.assertNotIn(13, opened, "the last enterable event makes room for the pins")
+
+    def test_unlocked_event_is_closed_again_when_pushed_out(self):
+        sync = self.make_sync(event_packs=self.PACKS)
+        sync.tick(list(self.PACKS), set())
+        self.assertIn(13, self.opened())
+        sync.pinned = [21]
+        sync.tick(list(self.PACKS), set())
+        self.assertNotIn(13, self.opened())
+        self.assertIn(21, self.opened())
+
+    def test_pack_announcements(self):
+        sync = self.make_sync(event_packs=self.PACKS)
+        first = " ".join(sync.tick(["Event Pack 1"], set()).messages)
+        self.assertIn("1 of 3 received", first)
+        self.assertEqual([m for m in sync.tick(["Event Pack 1"], set()).messages if "Event Pack" in m], [])
+        later = [m for m in sync.tick(["Event Pack 1", "Event Pack 3"], set()).messages if "Event Pack" in m]
+        self.assertEqual(len(later), 1)
+        self.assertIn("#21", later[0])
+
+    def test_pin_problems(self):
+        from ..client.sync import pin_problem
+        packs = {name: list(events) for name, events in self.PACKS.items()}
+        packs["Event Pack 1"].append(31)
+        s = Settings(event_packs=packs, star_gates=True)
+        got = ["Event Pack 1"]
+        self.assertIsNone(pin_problem(8, got, 0.0, {}, s))
+        self.assertIsNone(pin_problem(3, got, 0.0, {}, s), "start events need no pack")
+        self.assertIn("already done", pin_problem(1, got, 0.0, {1: 0}, s))
+        self.assertIn("Event Pack", pin_problem(16, got, 0.0, {}, s))
+        self.assertIn("not a career event", pin_problem(111, got, 0.0, {}, s))
+        self.assertIn("needs more stars", pin_problem(31, got, 0.0, {}, s))
+
+    def test_helpers(self):
+        from ..client.sync import can_enter, event_label, map_events
+        self.assertEqual(event_label(30), "#30 Dead Calm (2★)")
+        self.assertFalse(can_enter(30, 1.9))
+        self.assertTrue(can_enter(30, 2.0))
+        self.assertEqual(map_events({14, 13, 30, 7}, {7: 0}, 1.0, pinned=[30]), [30, 13, 14])
 
     def test_declined_time_trial_is_reopened(self):
         self.server.event(7, status=4)        # e.g. a declined time trial

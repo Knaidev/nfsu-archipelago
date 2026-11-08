@@ -12,8 +12,9 @@ from ..data.events import TIME_TRIALS
 from ..items import GAME_NAME, ITEM_NAME_TO_ID
 from .interface import NFSUInterface, WrongGame
 from ..logic import full_stars
-from .sync import (CounterStore, GameSync, Settings, banner_item_name, item_state, open_tiers, received_reputation,
-                   time_trial_wins)
+from .sync import (MAP_SLOTS, CounterStore, GameSync, Settings, banner_item_name, can_enter, event_label, pin_problem,
+                   item_state, map_events, open_tiers, received_packs, received_reputation, time_trial_wins,
+                   unlocked_events)
 
 logger = logging.getLogger("NFSU")
 ITEM_ID_TO_NAME = {v: k for k, v in ITEM_NAME_TO_ID.items()}
@@ -30,13 +31,18 @@ class NFSUCommandProcessor(ClientCommandProcessor):
                     f"(slot {ctx.game_interface.pine.slot}). Reconnecting…")
         return True
 
-    def _cmd_nfsu(self, *_ignored: str) -> bool:
-        """Show stars, open tiers, time trials and features that still lack memory addresses."""
+    def _cmd_nfsu(self, *args: str) -> bool:
+        """Status (stars, tiers, parts). /nfsu events: unlocked events and the 12 on the race map.
+        /nfsu pin <nr> / /nfsu unpin <nr>: give an event a race map slot first (the map holds 12)."""
         ctx: NFSUContext = self.ctx  # type: ignore
         sync = ctx.sync
         if sync is None:
             self.output("Not connected to a slot yet.")
             return True
+        if args and args[0].lower() == "events":
+            return self._events(sync)
+        if args and args[0].lower() in ("pin", "unpin"):
+            return self._pin(sync, args[0].lower() == "pin", args[1:])
         rep = received_reputation(ctx.received_names())
         self.output(f"Stars from received parts: {rep} (full stars: {full_stars(rep)})")
         self.output(f"Open tiers: {sorted(open_tiers(rep, sync.s))}")
@@ -52,6 +58,45 @@ class NFSUCommandProcessor(ClientCommandProcessor):
                     f"Samantha's Big Tease: {'yes' if state.has_key else 'no'}")
         if sync.missing:
             self.output("Not mapped yet: " + ", ".join(sorted(sync.missing)))
+        return True
+
+    def _events(self, sync: GameSync) -> bool:
+        ctx: NFSUContext = self.ctx  # type: ignore
+        names = ctx.received_names()
+        rep = received_reputation(names)
+        if sync.s.event_packs:
+            got = received_packs(names, sync.s)
+            self.output(f"Event Packs: {len(got)} of {len(sync.s.event_packs)}")
+            for name in got:
+                self.output(f"  {name}: " + ", ".join(event_label(n) for n in sync.s.event_packs[name]))
+        order = map_events(unlocked_events(names, rep, sync.s), sync.results, rep, sync.pinned)
+        self.output(f"Not yet won: {len(order)}; on the race map (max {MAP_SLOTS}):")
+        for i, n in enumerate(order):
+            tag = "map" if i < MAP_SLOTS else "   "
+            note = " pinned" if n in sync.pinned else ("" if can_enter(n, rep) else " needs more stars")
+            self.output(f"  {tag} {event_label(n)}{note}")
+        return True
+
+    def _pin(self, sync: GameSync, pin: bool, args) -> bool:
+        try:
+            number = int(str(args[0]).lstrip("#"))
+        except (IndexError, ValueError):
+            self.output("Usage: /nfsu pin <event number>  or  /nfsu unpin <event number>")
+            return False
+        if pin:
+            ctx: NFSUContext = self.ctx  # type: ignore
+            names = ctx.received_names()
+            problem = pin_problem(number, names, received_reputation(names), sync.results, sync.s)
+            if problem:
+                self.output(f"Not pinned: {problem}")
+                return False
+        if number in sync.pinned:
+            sync.pinned.remove(number)
+        if pin:
+            sync.pinned.insert(0, number)
+        self.output(f"#{number} {'pinned' if pin else 'unpinned'}. Pinned: "
+                    + (", ".join(f"#{n}" for n in sync.pinned) or "none")
+                    + ". Reopen the race map to see the change.")
         return True
 
     def _cmd_deathlink(self, state: str = "") -> bool:

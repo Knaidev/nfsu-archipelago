@@ -51,7 +51,8 @@ class TestDormantOptions(NFSUTestBase):
 
 
 class TestSphereOne(NFSUTestBase):
-    options = {"logic_strictness": "strict"}
+    """0.1 model: no Event Packs, tiers open by stars."""
+    options = {"logic_strictness": "strict", "event_packs": False, "star_gates": True}
 
     def test_tier1_rewards_in_sphere_1(self):
         state = CollectionState(self.multiworld)
@@ -59,7 +60,8 @@ class TestSphereOne(NFSUTestBase):
             if tier_of(event.number) != 1:
                 continue
             for name in base_check_names(event):
-                self.assertTrue(state.can_reach_location(name, self.player), name)
+                if not event.reputation_required:   # #14 and #20 are tournaments that need 1 star in game
+                    self.assertTrue(state.can_reach_location(name, self.player), name)
 
     def test_tier2_needs_level1_parts_and_two_stars(self):
         name = base_check_names(next(e for e in CHECK_EVENTS if e.number == 31))[0]
@@ -119,7 +121,7 @@ class TestCars(NFSUTestBase):
         world = self.multiworld.worlds[self.player]
         self.assertIn(world.starting_car, STARTER_CARS)
         own = {i.name for i in self.multiworld.itempool if i.player == self.player}
-        start = {i.name for i in self.multiworld.precollected_items[self.player]}
+        start = {i.name for i in self.multiworld.precollected_items[self.player] if i.name.startswith("Car: ")}
         self.assertEqual(start, {f"Car: {world.starting_car}"})
         self.assertEqual({n for n in own if n.startswith("Car: ")},
                          {f"Car: {c.name}" for c in CARS} - start, "all other cars are items")
@@ -141,3 +143,60 @@ class TestBankWithoutVanillaRewards(NFSUTestBase):
         base = sum(BANK_ITEMS.get(i.name, 0) for i in self.multiworld.itempool if i.player == self.player)
         effective = base * world.options.bank_multiplier.value // 100 + world.options.starting_bank.value
         self.assertGreaterEqual(effective, REQUIRED_BANK)
+
+
+class TestEventPacks(NFSUTestBase):
+    """0.2: events are items ("Event Pack N", contents decided by the seed)."""
+    options = {"starting_event_packs": 2}
+
+    def test_every_event_in_exactly_one_pack(self):
+        from ..packs import MAX_PACKS, PACK_EVENTS
+        world = self.multiworld.worlds[self.player]
+        self.assertEqual(len(world.packs), MAX_PACKS)
+        events = [n for pack in world.packs for n in pack]
+        self.assertEqual(sorted(events), sorted(PACK_EVENTS))
+        self.assertEqual(world.fill_slot_data()["event_packs"]["Event Pack 1"], world.packs[0])
+
+    def test_pack_items_in_pool_or_start(self):
+        world = self.multiworld.worlds[self.player]
+        own = [i.name for i in self.multiworld.itempool if i.player == self.player and i.name.startswith("Event")]
+        start = [i.name for i in self.multiworld.precollected_items[self.player] if i.name.startswith("Event")]
+        self.assertGreaterEqual(len(start), 2)
+        self.assertEqual(sorted(own + start), sorted(world.pack_items))
+        self.assertEqual(set(start), world.starting_packs)
+
+    def test_event_needs_its_pack(self):
+        world = self.multiworld.worlds[self.player]
+        pack_of = {n: name for name, pack in zip(world.pack_items, world.packs) for n in pack}
+        event = next(e for e in CHECK_EVENTS if tier_of(e.number) == 1 and not e.reputation_required
+                     and e.number in pack_of and pack_of[e.number] not in world.starting_packs)
+        name = base_check_names(event)[0]
+        self.assertFalse(self.can_reach_location(name))
+        self.collect_by_name([pack_of[event.number]])
+        self.assertTrue(self.can_reach_location(name))
+
+    def test_tournament_needs_stars(self):
+        world = self.multiworld.worlds[self.player]
+        pack_of = {n: name for name, pack in zip(world.pack_items, world.packs) for n in pack}
+        name = base_check_names(next(e for e in CHECK_EVENTS if e.number == 14))[0]   # 1 star in game
+        self.collect_by_name([pack_of[14]] + [f"Progressive {c.name}" for c in PERFORMANCE])
+        self.assertFalse(self.can_reach_location(name), "no stars")
+        self.collect_by_name(["Progressive Front Bumper"] * 2)      # 1.1 stars
+        self.assertTrue(self.can_reach_location(name))
+
+    def test_start_has_room_for_early_parts(self):
+        world = self.multiworld.worlds[self.player]
+        self.assertGreaterEqual(world._sphere_one_checks(), len(PERFORMANCE) + world.SPHERE_ONE_MARGIN)
+
+
+class TestPackModule(NFSUTestBase):
+    def test_choice_events_agree(self):
+        from .. import packs
+        self.assertEqual(packs.CHOICE_EVENTS, CHOICE_EVENTS)
+
+    def test_merged_sizes(self):
+        from ..packs import PACK_EVENTS, VANILLA_PACK_SIZES, pack_sizes
+        self.assertEqual(len(VANILLA_PACK_SIZES), 54)
+        for count in (1, 20, 53, 54):
+            sizes = pack_sizes(count)
+            self.assertEqual((len(sizes), sum(sizes)), (count, len(PACK_EVENTS)))

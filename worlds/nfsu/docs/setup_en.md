@@ -37,6 +37,9 @@ client, the game goes back to its normal unlock rules.
 ## Client commands
 
 - `/nfsu` – stars, open tiers, time trials, received parts and cars
+- `/nfsu events` – received Event Packs and all unlocked events, with the ones on the race map marked
+- `/nfsu pin <number>` / `/nfsu unpin <number>` – keep an event on the race map (it shows 12 at most); reopen the
+  race map afterwards
 - `/pcsx2` – show the PCSX2 connection and reconnect
 - `/deathlink on|off` – switch Death Link for this session (overrides your options file)
 
