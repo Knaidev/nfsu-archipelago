@@ -57,17 +57,19 @@ If someone else hosts the multiworld, send them your YAML and skip to step 5.
 1. Put your YAML (and the YAMLs of everyone else) into the `Players` folder of your Archipelago installation
    (Windows: `C:\ProgramData\Archipelago\Players`). Remove YAMLs you do not want to play with.
 2. In the Launcher click **Generate**. The game is written as a `.zip` into the `output` folder.
-3. In the Launcher click **Host** and choose that `.zip`. The server window shows the address, normally
-   `localhost:38281` on your own PC. Others connect to your IP address and that port.
-
-Games with this apworld cannot be hosted on archipelago.gg, because the website only knows the official worlds.
+3. Host it, either:
+   - **on archipelago.gg** (easiest, also for playing with others): open
+     [archipelago.gg/uploads](https://archipelago.gg/uploads), upload the `.zip` and click **Create New Room**.
+     The room page shows the address, e.g. `archipelago.gg:49802`.
+   - **on your own PC:** in the Launcher click **Host** and choose the `.zip`. The address is normally
+     `localhost:38281`; others connect to your IP address and that port.
 
 ## 5. Connecting
 
 1. Start PCSX2 and boot the game.
 2. Start **NFSU Client** from the Archipelago Launcher. Its log shows `Connected to PCSX2 (SLUS-20811)` once it
    finds the game (`/pcsx2` shows the connection state).
-3. Enter the server address (e.g. `localhost:38281`) at the top and click **Connect**, then enter your player name.
+3. Enter the server address (e.g. `archipelago.gg:49802` or `localhost:38281`) at the top and click **Connect**, then enter your player name.
 4. For a new game start a **new Underground Mode career**. If the game loads an old profile from the memory card,
    create a new profile instead.
 

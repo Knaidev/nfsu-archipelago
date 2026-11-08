@@ -215,6 +215,14 @@ class NFSUInterface:
         """Restores the original code (the game then unlocks events by its own rules again)."""
         self.remove_patch("availability_patch")
 
+    # race Bank patch
+    def apply_bank_reward_patch(self) -> bool:
+        """Event wins pay no Bank (vanilla_bank_rewards off). True when active."""
+        return self.apply_patch("bank_reward_patch")
+
+    def remove_bank_reward_patch(self) -> None:
+        self.remove_patch("bank_reward_patch")
+
     # shop unlock patch
     def apply_part_unlock_patch(self) -> bool:
         """Makes the shop ask the client's part table instead of the event status. True when active."""

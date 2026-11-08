@@ -309,7 +309,8 @@ def launch(*launch_args: str) -> None:
         # Without the client the game should unlock events, parts and cars by its own rules again.
         for remove, what in ((ctx.game_interface.remove_availability_patch, "Map patch"),
                              (ctx.game_interface.remove_part_unlock_patch, "Shop patch"),
-                             (ctx.game_interface.remove_car_unlock_patch, "Car patch")):
+                             (ctx.game_interface.remove_car_unlock_patch, "Car patch"),
+                             (ctx.game_interface.remove_bank_reward_patch, "Race Bank patch")):
             try:
                 await asyncio.to_thread(remove)
                 logger.info("%s removed.", what)

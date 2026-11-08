@@ -39,10 +39,12 @@ MAP = AddressMap(
     car_unlock_patch=((0x860, 0x27BDFFC0, 0x3C03004C), (0x864, 0x24020001, 0x24020001),
                       (0x868, 0x0200282D, 0x8042CAC7)),
     car_hash_list=0x7200, car_unlock_table=0x7100,
+    bank_reward_patch=((0x880, 0x00822021, 0x00000000),),
 )
 PERF_INDEX = {c.name: i for i, c in enumerate(PERFORMANCE)}
 SHOP_ORIGINAL = ((0x840, 0x0C0C5C18), (0x844, 0x10000013), (0x848, 0x2C420001))
 CAR_ORIGINAL = ((0x860, 0x27BDFFC0), (0x864, 0x24020001), (0x868, 0x0200282D))
+BANK_ORIGINAL = ((0x880, 0x00822021),)
 
 
 def shop(server, category: str, level: int) -> int:
@@ -163,7 +165,7 @@ class ClientTestBase(unittest.TestCase):
         self.server = FakePineServer()
         self.server.u32(0x800, 0x27BDFFC0)   # original game code at the map patch address
         self.server.u32(0x804, 0xFFB20020)
-        for address, word in SHOP_ORIGINAL + CAR_ORIGINAL:  # original game code at the patch addresses
+        for address, word in SHOP_ORIGINAL + CAR_ORIGINAL + BANK_ORIGINAL:  # original code at the patch addresses
             self.server.u32(address, word)
         from ..data.addresses import CAR_HASH_ORDER, string_hash
         for i, (internal, _) in enumerate(CAR_HASH_ORDER):  # the game's car hash list
@@ -420,18 +422,15 @@ class TestItems(ClientTestBase):
         sync.tick(["Bank Tax Trap"], set())
         self.assertEqual(self.server.u32(MAP.bank), 18000)
 
-    def test_vanilla_bank_removed_once(self):
+    def test_race_bank_patch(self):
         sync = self.make_sync(vanilla_bank_rewards=False)
-        self.server.u32(MAP.bank, 5000)
-        self.server.u32(MAP.ap_save_block + 4, 1)  # starting bank already handled
-        self.server.event(1, status=2, diff=1)      # #1 Medium pays 500
-        result = sync.tick([], set())
-        self.assertEqual(self.server.u32(MAP.bank), 4500)
         sync.tick([], set())
-        self.assertEqual(self.server.u32(MAP.bank), 4500)
-        sync.tick([], result.new_checks)
-        self.assertEqual(self.server.u32(MAP.bank), 4500)
-
+        self.assertEqual(self.server.u32(0x880), 0, "event wins pay no Bank")
+        self.make_sync(vanilla_bank_rewards=True).tick([], set())
+        self.assertEqual(self.server.u32(0x880), 0x00822021, "original code back")
+        self.server.u32(0x880, 0x12345678)                  # foreign code: left alone
+        self.make_sync(vanilla_bank_rewards=False).tick([], set())
+        self.assertEqual(self.server.u32(0x880), 0x12345678)
 
 class TestRaces(ClientTestBase):
     """Layout found in NFSU NTSC-U (#2): race_active stays set on the results screen, the results
@@ -494,6 +493,21 @@ class TestRaces(ClientTestBase):
         self.results(True, [4, 1, 2, 3])                              # restarted, lost again, never on the map
         self.assertIsNotNone(sync.tick([], set()).send_death)
 
+    def test_tournament_judged_at_the_end(self):
+        sync = self.make_sync(death_link=True)
+        self.server.event(9, status=3)                                # #9 drag tournament is being raced
+        self.assertIsNone(self.race(sync, [], 2, back_to_map=False)[1].send_death, "a lost round is no death")
+        self.assertIsNone(self.race(sync, [], 1, back_to_map=False)[1].send_death)
+        self.server.event(9, status=1)                                # tournament lost: open again
+        self.server.u32(MAP.race_active, 0)
+        self.assertEqual(sync.tick([], set()).send_death, "lost a tournament")
+        self.assertIsNone(sync.tick([], set()).send_death)
+        self.server.event(9, status=3)                                # second try, won
+        self.race(sync, [], 3, back_to_map=False)
+        self.server.event(9, status=2)
+        self.server.u32(MAP.race_active, 0)
+        self.assertIsNone(sync.tick([], set()).send_death)
+
     def test_death_link_amnesty(self):
         sync = self.make_sync(death_link=True, death_link_amnesty=1)
         self.assertIsNone(self.race(sync, [], 3)[1].send_death)
@@ -543,6 +557,32 @@ class TestRaces(ClientTestBase):
         self.assertEqual(self.server.u8(MAP.force_race_loss), 0)
         self.assertIsNone(out.send_death, "a received death is not echoed")
         self.assertIsNone(sync.tick([], set()).send_death)
+
+    def test_blown_round_in_tournament_is_no_death(self):
+        sync = self.make_sync(death_link=True)
+        self.server.event(9, status=3)                               # drag tournament
+        self.drag(sync)
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 1)    # live: rounds read as "blown"
+        self.assertIsNone(sync.tick([], set()).send_death)
+        self.assertIsNone(sync.tick([], set()).send_death)
+
+    def test_reward_popup_texts(self):
+        from ..client.sync import reward_popup_texts
+        nodes = [(1, "Congratulations!  You have 300 added to your Bank."),          # live #25 (bank added)
+                 (2, "Race Victory!^Chrom & Flammen puts you on the^cover of their magazine."),
+                 (3, "Congratulations!^You have unlocked^Drift Track 3"),
+                 (4, "Congratulations!^You are now ranked 10th in Drift race mode."),
+                 (5, "Congratulations!^You have unlocked^Something else")]
+        texts = dict(reward_popup_texts(25, nodes, lambda i: "Turbo", vanilla_bank=False))
+        self.assertIn("You found:^Turbo", texts[3])
+        self.assertNotIn(2, texts, "magazine cover keeps the game's text")
+        self.assertNotIn(4, texts, "ranking keeps the game's text")
+        self.assertIn("No Archipelago item here", texts[5])
+        only_info = dict(reward_popup_texts(25, nodes[1:2], lambda i: "Turbo"))
+        self.assertIn("Turbo", only_info[2], "without unlock or Bank popup the items still show")
+        self.assertIn("Races pay no Bank", texts[1])
+        self.assertNotIn("300", texts[1])
+        self.assertIn("300", dict(reward_popup_texts(25, nodes, lambda i: "Turbo"))[1])
 
     def test_blown_engine_sends_death_once(self):
         sync = self.make_sync(death_link=True)
@@ -864,7 +904,7 @@ class TestEventPacks(ClientTestBase):
 
     def test_helpers(self):
         from ..client.sync import can_enter, event_label, map_events
-        self.assertEqual(event_label(30), "#30 Dead Calm (2★)")
+        self.assertEqual(event_label(30), "#30 Dead Calm (2 stars)")
         self.assertFalse(can_enter(30, 1.9))
         self.assertTrue(can_enter(30, 2.0))
         self.assertEqual(map_events({14, 13, 30, 7}, {7: 0}, 1.0, pinned=[30]), [30, 13, 14])

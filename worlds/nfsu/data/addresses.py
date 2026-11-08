@@ -89,6 +89,13 @@ class AddressMap:
     #: profile, harmless without the patch).
     part_unlock_table: Optional[int] = None
 
+    # ---------------------------------------------------------------- race Bank patch
+    #: Turns off the Bank the game pays for an event win (vanilla_bank_rewards off). The win code adds the event's
+    #: Bank (a float per difficulty in the event record) to the Bank and to "Bank earned"; the patch drops the
+    #: add to the Bank. NTSC-U: 0x003163EC "addu a0, a0, v0" in the event-win code (0x003163C0..0x003163F8, the
+    #: same code sets the status to 2), found in a RAM snapshot.
+    bank_reward_patch: CodePatch = ()
+
     # ---------------------------------------------------------------- car unlock patch
     #: IsCarUnlocked(career, car hash) (NTSC-U 0x00316DE0) works like IsPartUnlocked: the event whose reward list
     #: has the car must be won; cars no event lists (starter cars) are always available. The patch replaces the
@@ -208,6 +215,9 @@ ADDRESSES: Dict[str, AddressMap] = {
         event_index_gaps=(85,),
         # In 0x00316BA0, after the matching event record was found (s1 = career 0x004AC698, s2 = level,
         # s3 = category): "return Status[event] == 2" -> "return table[category*4 + level - 1]".
+        bank_reward_patch=(
+            (0x003163EC, 0x00822021, 0x00000000),   # addu a0, a0, v0 (Bank += event Bank) -> nop
+        ),
         part_unlock_patch=(
             (0x00316BE0, 0x0C0C5C18, 0x00131080),   # jal StatusPtr        -> sll  v0, s3, 2
             (0x00316BE4, 0x0200282D, 0x00521021),   # daddu a1, s0, zero   -> addu v0, v0, s2

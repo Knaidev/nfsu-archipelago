@@ -46,6 +46,8 @@ FIRST_CAR_BUDGET = 10000
 #: bought without knowing its price. The purchase is then undone to what the 10,000 would have left.
 FIRST_CAR_FAKE_BANK = 500000
 MAX_CAR_PRICE = 200000
+#: Suffix for race results inside a tournament: rounds never send a death, the tournament is judged at its end.
+TOURNAMENT_ROUND = " (tournament round – no Death Link, the tournament counts at its end)"
 BANK_TAX_PERCENT = 10
 SLOWDOWN_SCALE = 0.6
 RACE_TRAPS = ("Nitro Drain Trap", "Grip Loss Trap", "Power Cut Trap", "Style Crash Trap", "HUD Blackout Trap")
@@ -229,7 +231,7 @@ def unlocked_events(names: List[str], reputation: float, s: Settings) -> Set[int
 
 def event_label(number: int) -> str:
     e = EVENTS_BY_NUMBER[number]
-    return "#%d %s%s" % (number, e.name, " (%d★)" % e.reputation_required if e.reputation_required else "")
+    return "#%d %s%s" % (number, e.name, " (%d %s)" % (e.reputation_required, "star" if e.reputation_required == 1 else "stars") if e.reputation_required else "")
 
 
 def can_enter(number: int, reputation: float) -> bool:
@@ -389,27 +391,38 @@ class BannerQueue:
 POPUP_TITLE = "ARCHIPELAGO!"
 
 
-def reward_popup_texts(event: int, nodes: List[tuple], describe: Callable[[int], str]) -> List[tuple]:
+def is_unlock_popup(text: str) -> bool:
+    """A vanilla unlock ("Congratulations!^You have unlocked …"), as opposed to info popups (magazine cover,
+    ranking) that Archipelago does not replace."""
+    return "unlocked" in text.lower()
+
+
+def reward_popup_texts(event: int, nodes: List[tuple], describe: Callable[[int], str],
+                       vanilla_bank: bool = True) -> List[tuple]:
     """Distributes the Archipelago items of `event` over the game's reward popups.
 
-    The Bank popup ("... added to your Bank.") keeps its Bank line; every other popup (a vanilla unlock that
-    Archipelago replaces) gets one found item. Items left over (e.g. events whose rewards have no popup of their
-    own) are listed in the Bank popup. Choice events have no checks – their popups stay untouched."""
+    The Bank popup ("... added to your Bank.") keeps its Bank line; every unlock popup ("You have unlocked …", a
+    vanilla unlock that Archipelago replaces) gets one found item. Other popups (live #25: magazine cover, "You are
+    now ranked 10th in Drift race mode.") keep the game's text. Items left over (e.g. events whose rewards have no
+    popup of their own) are listed in the Bank popup. Choice events have no checks – their popups stay untouched."""
     ids = list(EVENT_CHECK_IDS.get(event, ()))
     if not ids:
         return []
     lines = [describe(i) for i in ids]
     bank_nodes = [(n, t) for n, t in nodes if "added to your Bank" in t]
-    unlock_nodes = [(n, t) for n, t in nodes if (n, t) not in bank_nodes]
+    others = [(n, t) for n, t in nodes if (n, t) not in bank_nodes]
+    unlock_nodes = [(n, t) for n, t in others if is_unlock_popup(t)]
+    if not unlock_nodes and not bank_nodes:
+        unlock_nodes = others[:1]          # no unlock or Bank popup: the items still need a place
     writes = []
     for (node, _), line in zip(unlock_nodes, lines):
         writes.append((node, f"{POPUP_TITLE}^You found:^{line}"))
     rest = lines[len(unlock_nodes):]
     for node, _ in unlock_nodes[len(lines):]:
-        writes.append((node, f"{POPUP_TITLE}^Nothing more here."))
+        writes.append((node, f"{POPUP_TITLE}^No Archipelago item here."))
     if bank_nodes:
         node, text = bank_nodes[0]
-        bank_line = text.replace("Congratulations!", "").strip()
+        bank_line = text.replace("Congratulations!", "").strip() if vanilla_bank else "Races pay no Bank in this game."
         if rest:
             writes.append((node, f"{POPUP_TITLE} You found:^" + "^".join(rest) + f"^{bank_line}"))
         else:
@@ -474,7 +487,9 @@ class GameSync:
         self.traps = TrapManager()
         self.death = DeathLinkTracker(settings)
         self.missing: Set[str] = set()
-        self.deducted: Set[tuple] = set()
+        self.bank_patch_logged: Optional[bool] = None
+        self.tournament: Optional[int] = None      # tournament being raced: judged by its end, not per round
+        self.tournament_forced = False             # a received death hit this tournament
         self.was_racing: Optional[bool] = None
         self.race_seen = False
         self.result_handled = False
@@ -525,17 +540,11 @@ class GameSync:
             self.results = results
             earned = checks_for_results(results)
             out.new_checks = earned - checked
-            if not s.vanilla_bank_rewards:
-                for n, won in in_memory.items():
-                    ids = EVENT_CHECK_IDS.get(n)
-                    if ids and ids[0] not in checked and (n, won) not in self.deducted:
-                        bank = EVENTS_BY_NUMBER[n].bank[won] or 0
-                        if self.run("bank", game.add_bank, -bank) is not None:
-                            self.deducted.add((n, won))
             if goal_reached(results, s):
                 out.goal = True
         if popup_win is not None:
             out.new_checks |= event_check_ids(popup_win) - checked
+        self._sync_bank_reward_patch()
 
         # 2. shop unlocks and event availability
         state = item_state(received, s)
@@ -579,9 +588,11 @@ class GameSync:
                 else:
                     out.messages.append("Death Link: " + self._apply_death())
                     self.death_forced = True
+                    self.tournament_forced = self.tournament is not None
             if not racing and self.was_racing:
                 self.traps.race_ended(game, self.run)
             self.was_racing = racing
+            out.send_death = self._track_tournament(racing, in_memory) or out.send_death
             # The results popups exist while the race is still loaded (race_active stays set until the map).
             # Once the popups are gone while the race is still loaded (restart from the results screen), the next
             # results screen counts again.
@@ -595,10 +606,12 @@ class GameSync:
                         self.death_sent = False
                 elif not self.result_handled:
                     self.result_handled = True
-                    out.messages.append("Race result: %s, position %s of %s" % (
-                        "won" if result.won else "lost", result.position or "?", result.racers or "?"))
+                    out.messages.append("Race result: %s, position %s of %s%s" % (
+                        "won" if result.won else "lost", result.position or "?", result.racers or "?",
+                        TOURNAMENT_ROUND if self.tournament is not None else ""))
                     # One death per attempt: none after a blown engine already sent one or a received death.
-                    if (s.death_link and not self.death_sent and not self.blown_handled
+                    # Tournaments are judged by their end (_track_tournament), not per round.
+                    if (s.death_link and self.tournament is None and not self.death_sent and not self.blown_handled
                             and self.death.should_send(result, self.death_forced)):
                         out.send_death = "lost a street race" if not result.last_place else "finished dead last"
                         self.death_sent = True
@@ -608,8 +621,10 @@ class GameSync:
                 blown = self.run("engine state", game.engine_blown)
                 if blown and not self.blown_handled:
                     self.blown_handled = True
-                    out.messages.append("Race result: lost, blown engine")
-                    if (s.death_link and not self.death_sent
+                    # Tournament rounds read as blown (seen in game), so no engine claim there.
+                    out.messages.append("Race result: lost" + TOURNAMENT_ROUND if self.tournament is not None
+                                        else "Race result: lost, blown engine")
+                    if (s.death_link and self.tournament is None and not self.death_sent
                             and self.death.should_send(RaceResult(False), self.death_forced)):
                         out.send_death = "blew the engine"
                         self.death_sent = True
@@ -665,9 +680,50 @@ class GameSync:
             return None
         if self.popups_written_for != (owner, event):
             self.popups_written_for = (owner, event)
-            for node, text in reward_popup_texts(event, nodes, self.describe):
+            ids = EVENT_CHECK_IDS.get(event, ())
+            unlocks = [t for _, t in nodes if is_unlock_popup(t)]
+            if ids and len(unlocks) > len(ids):
+                # More vanilla unlock popups than checks: log what the game wanted to show.
+                logger.info("NFSU: #%d shows %d reward popups for %d check(s); original texts: %s",
+                            event, len(unlocks), len(ids), " | ".join(t.replace("^", " / ") for t in unlocks))
+            for node, text in reward_popup_texts(event, nodes, self.describe, self.s.vanilla_bank_rewards):
                 self.game.write_popup_text(node, text)
         return event
+
+    def _track_tournament(self, racing: bool, in_memory: Optional[Dict[int, int]]) -> Optional[str]:
+        """Tournaments have several rounds; a lost or "blown" round (seen in game: drag tournament rounds read
+        as blown engines) says nothing about the tournament. So a tournament is judged when its event stops being
+        the active one: won (status 2) = fine, otherwise (status back to open: lost or quit) = a death.
+        Returns the death cause to send, else None."""
+        event = self.run("active event", self.game.active_event) if racing or self.tournament is not None else None
+        if racing and event is not None and event != self.tournament and EVENTS_BY_NUMBER[event].tournament:
+            self.tournament, self.tournament_forced = event, False
+            return None
+        if self.tournament is None or event == self.tournament or in_memory is None:
+            return None
+        ended, self.tournament = self.tournament, None
+        if ended in in_memory or not self.s.death_link or self.tournament_forced:
+            return None
+        if self.death.should_send(RaceResult(False), False):
+            return "lost a tournament"
+        return None
+
+    def _sync_bank_reward_patch(self) -> None:
+        """vanilla_bank_rewards off: the game pays no Bank for event wins (code patch); on: original code."""
+        try:
+            if self.s.vanilla_bank_rewards:
+                self.game.remove_bank_reward_patch()
+                return
+            active = self.game.apply_bank_reward_patch()
+        except NotMapped as e:
+            self._report_missing("race Bank", e)
+            return
+        if active != self.bank_patch_logged:
+            self.bank_patch_logged = active
+            if active:
+                logger.info("NFSU: race Bank patch active – event wins pay no Bank (Vanilla Bank Rewards off).")
+            else:
+                logger.warning("NFSU: unexpected code at the race Bank patch address – event wins still pay Bank.")
 
     def _sync_part_unlocks(self, received: List[str], results: Mapping[int, int]) -> None:
         """Writes the shop table, then makes sure the shop patch is active (table first: no window in which the

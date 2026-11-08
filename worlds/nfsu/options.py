@@ -159,7 +159,8 @@ class BankMultiplier(Range):
 
 
 class VanillaBankRewards(DefaultOnToggle):
-    """Keep paying the game's normal Bank for winning events."""
+    """Keep paying the game's normal Bank for winning events. Off: races pay no Bank (the client switches the
+    payout off while it runs), all Bank comes from Bank items."""
     display_name = "Vanilla Bank Rewards"
 
 
