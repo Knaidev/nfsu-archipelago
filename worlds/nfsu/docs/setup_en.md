@@ -34,6 +34,11 @@ Or, in the Archipelago Launcher, choose **Generate Template Options**, then edit
 2. Start **NFSU Client** from the Archipelago Launcher.
 3. Connect to the room (`/connect address:port`).
 
+After the prologue you choose your first car. While you choose it, the client shows 500,000 Bank so any car (also
+an expensive random start car) can be bought; after the purchase the Bank is set to what the game's 10,000 would have
+left (0 if the car costs more). Starting Bank and Bank items are paid after that (so a new career does not lose
+them).
+
 The client patches the game in memory while it runs (event availability, shop, car lot). When you close the
 client, the game goes back to its normal unlock rules.
 

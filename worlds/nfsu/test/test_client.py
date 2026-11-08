@@ -9,7 +9,7 @@ from typing import Optional
 from ..client import interface as interface_mod
 from ..client.interface import NFSUInterface
 from ..client.pine import Pine
-from ..client.sync import GameSync, MemoryCounterStore, Settings
+from ..client.sync import FIRST_CAR_FAKE_BANK, GameSync, MemoryCounterStore, Settings
 from ..locations import EVENT_CHECK_IDS
 
 
@@ -168,6 +168,7 @@ class ClientTestBase(unittest.TestCase):
         from ..data.addresses import CAR_HASH_ORDER, string_hash
         for i, (internal, _) in enumerate(CAR_HASH_ORDER):  # the game's car hash list
             self.server.u32(MAP.car_hash_list + 4 * i, string_hash(internal))
+        self.server.event(0, status=2)       # prologue won: a career is running (Bank items are paid)
         self._old_addresses = dict(addresses_mod.ADDRESSES)
         interface_mod.ADDRESSES[TEST_SERIAL] = MAP
         self.game = NFSUInterface(Pine(self.server.port, timeout=2.0))
@@ -372,11 +373,52 @@ class TestItems(ClientTestBase):
         self.make_sync(bank_multiplier=150, starting_bank=2000).tick(received, set())
         self.assertEqual(self.server.u32(MAP.bank), 4000)
 
-    def test_bank_tax_trap(self):
+    def test_bank_waits_for_the_prologue(self):
+        self.server.event(0, status=0)       # title screen / prologue: a new career would reset the Bank
+        sync = self.make_sync(starting_bank=2000)
+        self.server.u32(MAP.bank, 0)
+        sync.tick(["Bank Bonus (1000)"], set())
+        self.assertEqual(self.server.u32(MAP.bank), 0)
+        self.assertEqual(self.server.u32(MAP.ap_save_block), 0, "nothing marked as paid")
+        self.server.event(0, status=2)
+        sync.tick(["Bank Bonus (1000)"], set())
+        self.assertEqual(self.server.u32(MAP.bank), 3000)
+
+    def test_first_car_with_fake_bank(self):
+        sync = self.make_sync(starting_bank=2000)
+        self.server.u32(MAP.bank, 10000)                    # new career, prologue won, choosing the first car
+        messages = sync.tick(["Bank Bonus (1000)"], set()).messages
+        self.assertEqual(self.server.u32(MAP.bank), FIRST_CAR_FAKE_BANK)
+        self.assertTrue(any("Choose your car" in m for m in messages), messages)
+        sync.tick(["Bank Bonus (1000)"], set())
+        self.assertEqual(self.server.u32(MAP.bank), FIRST_CAR_FAKE_BANK, "nothing paid while choosing")
+        self.server.u32(MAP.bank, FIRST_CAR_FAKE_BANK - 22500)   # bought a Skyline (22,500 in game)
+        messages = sync.tick(["Bank Bonus (1000)"], set()).messages
+        self.assertEqual(self.server.u32(MAP.bank), 0 + 2000 + 1000)
+        self.assertTrue(any("22,500" in m for m in messages), messages)
+        # A restarted client must neither fake nor pay again.
+        self.make_sync(starting_bank=2000).tick(["Bank Bonus (1000)"], set())
+        self.assertEqual(self.server.u32(MAP.bank), 3000)
+
+    def test_first_car_cheap_keeps_vanilla_change(self):
         sync = self.make_sync()
         self.server.u32(MAP.bank, 10000)
+        sync.tick([], set())
+        self.server.u32(MAP.bank, FIRST_CAR_FAKE_BANK - 9500)     # MX-5
+        self.make_sync().tick([], set())                          # also works after a client restart
+        self.assertEqual(self.server.u32(MAP.bank), 500)
+
+    def test_no_fake_bank_in_a_running_career(self):
+        self.server.event(1, status=2)
+        self.server.u32(MAP.bank, 10000)
+        self.make_sync().tick([], set())
+        self.assertEqual(self.server.u32(MAP.bank), 10000)
+
+    def test_bank_tax_trap(self):
+        sync = self.make_sync()
+        self.server.u32(MAP.bank, 20000)
         sync.tick(["Bank Tax Trap"], set())
-        self.assertEqual(self.server.u32(MAP.bank), 9000)
+        self.assertEqual(self.server.u32(MAP.bank), 18000)
 
     def test_vanilla_bank_removed_once(self):
         sync = self.make_sync(vanilla_bank_rewards=False)
@@ -1013,7 +1055,8 @@ class TestPlaceholders(ClientTestBase):
         result = sync.tick(["Bank Bonus (1000)", "Grip Loss Trap"], set())
         self.assertEqual(result.new_checks, set())
         self.assertIn("event_status_won / event_stride", sync.missing)
-        self.assertIn("bank", sync.missing)
+        # Without the event table the client cannot tell whether a career runs, so Bank items wait.
+        self.assertNotIn("bank", sync.missing)
 
     def test_shipped_table_is_placeholder_for_ntsc_u(self):
         self.assertIn(addresses_mod.SERIAL_NTSC_U, self._old_addresses)

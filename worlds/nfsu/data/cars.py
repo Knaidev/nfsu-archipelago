@@ -9,7 +9,7 @@ from typing import NamedTuple, Optional, Tuple
 class CarData(NamedTuple):
     name: str
     unlock_event: Optional[int]   # None = available from the start (starter car)
-    price: int                    # Bank
+    price: int                    # Bank, wiki value – not the game's (live: the Skyline costs 22,500); unused
     rating: Tuple[float, float, float]
 
 

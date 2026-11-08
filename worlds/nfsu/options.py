@@ -132,6 +132,8 @@ class StartingCar(Choice):
     """vanilla: all five starter cars are available as usual.
     random_starter: one random starter car is available; the other four become items.
     random_car: one random car of all 20 is available; all other cars become items.
+    You buy the start car right after the prologue. While you choose it, the client shows enough Bank for any
+    car; after the purchase your Bank is what the game's 10,000 would have left (0 if the car costs more).
     The random options need Cars As Items."""
     display_name = "Starting Car"
     option_vanilla = 0

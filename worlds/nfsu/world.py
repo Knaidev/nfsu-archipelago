@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from typing import Any, ClassVar, Dict, FrozenSet, List, Mapping, Optional, Set
 
 from worlds.AutoWorld import World

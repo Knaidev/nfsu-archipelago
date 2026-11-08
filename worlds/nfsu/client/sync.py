@@ -38,6 +38,14 @@ EPILOGUE_EVENT = 112
 PLAYABLE_EVENTS = tuple(e.number for e in CAREER_EVENTS if 1 <= e.number <= 110)
 
 FLAG_STARTING_BANK = 1 << 0
+FLAG_FIRST_CAR = 1 << 1           # the career's first car is bought (Bank back to normal)
+PROLOGUE_EVENT = 0
+#: Bank a new career has for its first car (seen in game: MX-5 for 9,500 left 500).
+FIRST_CAR_BUDGET = 10000
+#: While the first car is chosen the client shows this Bank, so every car (also a random start car) can be
+#: bought without knowing its price. The purchase is then undone to what the 10,000 would have left.
+FIRST_CAR_FAKE_BANK = 500000
+MAX_CAR_PRICE = 200000
 BANK_TAX_PERCENT = 10
 SLOWDOWN_SCALE = 0.6
 RACE_TRAPS = ("Nitro Drain Trap", "Grip Loss Trap", "Power Cut Trap", "Style Crash Trap", "HUD Blackout Trap")
@@ -453,6 +461,7 @@ class GameSync:
         self.s = settings
         self.counter_store = counter_store
         self.counter_ahead_logged = False
+        self.waiting_for_career_logged = False
         self.won_seen: Optional[Set[int]] = None
         self.popups_written_for: Optional[tuple] = None
         #: location id -> "Turbo Upgrade" / "Hookshot for Bob"; set by the network client (scouted locations).
@@ -544,8 +553,13 @@ class GameSync:
             except NotMapped as e:
                 self._report_missing("event availability", e)
 
-        # 3. one-time items
-        out.messages += self._apply_consumables(received)
+        # 3. one-time items – only in a started career: Bank written on the title screen or during the prologue
+        #    would be lost when a new career is created (the counter would still say "paid").
+        if in_memory is not None and PROLOGUE_EVENT in in_memory:
+            out.messages += self._apply_consumables(received, in_memory)
+        elif not self.waiting_for_career_logged:
+            self.waiting_for_career_logged = True
+            logger.info("NFSU: Bank items and the Starting Bank wait until the prologue is won (career started).")
 
         # 4. races: traps and death link
         racing = self.run("race state", game.in_race)
@@ -780,7 +794,26 @@ class GameSync:
         block = self.counter_store.load()
         return (block, self.counter_store.save) if block is not None else (None, None)
 
-    def _apply_consumables(self, received: List[str]) -> List[str]:
+    def _first_car(self, in_memory: Dict[int, int]) -> Tuple[bool, Optional[str]]:
+        """A new career buys its first car with 10,000 Bank right after the prologue. A random start car can cost
+        more, so the client shows a fake Bank while the car is chosen and afterwards sets the Bank to what the
+        10,000 would have left (0 if the car costs more). Returns (first car bought, message)."""
+        bank = self.game.bank()
+        fresh = set(in_memory) == {PROLOGUE_EVENT}
+        if fresh and bank == FIRST_CAR_BUDGET:
+            self.game.add_bank(FIRST_CAR_FAKE_BANK - bank)
+            return False, (f"Choose your car: Bank shows {FIRST_CAR_FAKE_BANK:,} so any car can be bought – "
+                           f"it is set back after the purchase.")
+        if bank == FIRST_CAR_FAKE_BANK:
+            return False, None   # still choosing
+        if fresh and FIRST_CAR_FAKE_BANK - MAX_CAR_PRICE <= bank < FIRST_CAR_FAKE_BANK:
+            price = FIRST_CAR_FAKE_BANK - bank
+            left = max(0, FIRST_CAR_BUDGET - price)
+            self.game.add_bank(left - bank)
+            return True, f"First car bought for {price:,} Bank: Bank set to {left:,}."
+        return True, None        # the career already has its car (e.g. a profile from an older version)
+
+    def _apply_consumables(self, received: List[str], in_memory: Dict[int, int]) -> List[str]:
         if self.run("Bank items", self.game.bank) is None:
             return []
         block, save = self._counter()
@@ -796,6 +829,13 @@ class GameSync:
             return []
         msgs = []
         start_index = index
+        if not flags & FLAG_FIRST_CAR:
+            bought, msg = self._first_car(in_memory)
+            if msg:
+                msgs.append(msg)
+            if not bought:
+                return msgs       # Starting Bank and Bank items wait until the first car is bought
+            flags |= FLAG_FIRST_CAR
         if not flags & FLAG_STARTING_BANK:
             if self.s.starting_bank:
                 self.game.add_bank(self.s.starting_bank)
@@ -816,6 +856,6 @@ class GameSync:
             elif name in RACE_TRAPS:
                 self.traps.queue(name)
                 msgs.append(f"{name} queued for your next race")
-        if len(received) != start_index or not block[1] & FLAG_STARTING_BANK:
+        if len(received) != start_index or flags != block[1]:
             save(len(received), flags)
         return msgs
