@@ -273,16 +273,21 @@ PRESETS = {
         "star_gate_scale": 75,
         "bank_multiplier": 200,
         "starting_bank": 5000,
+        "starting_event_packs": 4,
         "death_link": False,
     },
     "Standard": {
         "logic_strictness": "normal",
         "bank_multiplier": 100,
+        "event_packs": True,
+        "starting_event_packs": 2,
         "death_link": False,
     },
     "Hardcore": {
         "logic_strictness": "strict",
         "starting_car": "random_starter",
         "vanilla_bank_rewards": False,
+        "star_gates": True,
+        "starting_event_packs": 1,
     },
 }

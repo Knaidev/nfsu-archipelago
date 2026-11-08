@@ -2,7 +2,7 @@
 
 > **AI notice: the code of this project is not handwritten.** It was written by AI (Claude by Anthropic).
 >
-> **Alpha 0.1** – expect bugs. Please report them on the project's GitHub page.
+> **Alpha 0.3** – expect bugs. Please report them on the project's GitHub page.
 
 ## Required software
 
@@ -22,7 +22,10 @@ Double-click `nfsu.apworld`, or copy it into the `custom_worlds` folder of your 
 
 ## Creating your options file
 
-In the Archipelago Launcher, choose **Generate Template Options**, then edit
+The easiest way: open **`nfsu_options.html`** from the release in your browser, pick your options and click
+**Download YAML** (it works offline; option descriptions are behind the **?** buttons).
+
+Or, in the Archipelago Launcher, choose **Generate Template Options**, then edit
 `Need for Speed Underground.yaml`. Example files are in the project's `examples/` folder.
 
 ## Connecting

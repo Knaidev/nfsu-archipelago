@@ -2,8 +2,8 @@
 
 > **AI notice: the code of this project is not handwritten.** It was written by AI (Claude by Anthropic).
 >
-> **Alpha 0.1.** Race wins, the reward popups, event availability, the shop, cars, Bank and Death Link work with
-> the PCSX2 client. A full run to the goal has not been played yet.
+> **Alpha 0.3.** Race wins, the reward popups, Event Packs and the race map, the shop, cars, Bank and Death Link
+> work with the PCSX2 client. A full run to the goal has not been played yet.
 
 ## What does randomization do to this game?
 

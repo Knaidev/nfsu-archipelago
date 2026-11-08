@@ -5,7 +5,7 @@
 An [Archipelago](https://archipelago.gg) world and PCSX2 client for **Need for Speed: Underground** (PS2,
 NTSC-U `SLUS-20811`). Race rewards become checks, and parts, cars and Bank come from the multiworld.
 
-**Status: Alpha 0.1.** Everything listed below was tested in game, but a full run to the goal has not been
+**Status: Alpha 0.3.** Everything listed below was tested in game, but a full run to the goal has not been
 played yet. Expect bugs and please report them in the issues.
 
 ## Features
@@ -22,7 +22,8 @@ played yet. Expect bugs and please report them in the issues.
 - **Death Link:** losing a race sends a death; a received death blows your engine ("Blown Engine").
 
 Details: [game page](worlds/nfsu/docs/en_Need%20for%20Speed%20Underground.md) ·
-[setup guide](worlds/nfsu/docs/setup_en.md) · example options in [`examples/`](examples).
+[setup guide](worlds/nfsu/docs/setup_en.md) · example options in [`examples/`](examples) · YAML creator page
+`nfsu_options.html` in each release.
 
 ## Installation
 
@@ -44,6 +45,8 @@ addresses have not been found yet. Only the NTSC-U version of the game is suppor
   game data in `data/` (`addresses.py` holds every RAM address and code patch), the client in `client/`,
   tests in `test/`.
 - `tools/build_apworld.py --archipelago <Archipelago source>` builds `build/nfsu.apworld`.
+- `tools/build_options_page.py --archipelago <Archipelago source>` builds `build/nfsu_options.html`, a stand-alone
+  page to create a player YAML (generated from `options.py`; template `tools/options_page.html`).
 - `tools/pine_memscan.py` – RAM snapshots / search over PINE; `tools/research/` – data scrapers, MIPS disassembler.
 
 Tests run with Archipelago's test runner from an Archipelago source checkout that contains `worlds/nfsu`:
