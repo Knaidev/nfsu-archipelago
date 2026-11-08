@@ -85,6 +85,9 @@
   pre { margin: 0; background: var(--code); border: 1px solid var(--line); border-radius: 8px; padding: 12px;
         overflow: auto; font: 13px/1.45 ui-monospace, Consolas, monospace; max-height: 420px; }
   .note { color: var(--muted); font-size: 13.5px; margin: 0 0 8px; }
+  .opt.changed { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; }
+  .opt.changed label.name::after { content: " · changed"; color: var(--accent); font-weight: 500; font-size: 12.5px; }
+  #presetNote { margin: 6px 0 0; }
 </style>
 </head>
 <body>
@@ -110,6 +113,7 @@
         <label for="preset">Preset</label>
         <select id="preset"></select>
       </div>
+      <p class="note" id="presetNote" style="grid-column: 1 / -1"></p>
     </div>
   </section>
 
@@ -195,7 +199,9 @@
     },
     choice: function (o) {
       var s = el("select", {id: "opt-" + o.key});
-      o.choices.concat(["random"]).forEach(function (c) { s.appendChild(el("option", {value: c, text: c})); });
+      // AP's generic "random" picks any choice; options with their own random_* choices don't need it
+      var own = o.choices.some(function (c) { return c.indexOf("random") === 0; });
+      (own ? o.choices : o.choices.concat(["random"])).forEach(function (c) { s.appendChild(el("option", {value: c, text: c})); });
       s.value = values[o.key];
       s.addEventListener("change", function () { values[o.key] = s.value; update(); });
       return [s];
@@ -267,7 +273,7 @@
           help.setAttribute("aria-expanded", String(open));
         });
         var head = el("div", {class: "opt-head"}, [el("label", {class: "name", for: "opt-" + o.key, text: o.name}), help]);
-        grid.appendChild(el("div", {class: "opt"}, [head, doc, el("div", {class: "ctrl"}, renderers[o.kind](o))]));
+        grid.appendChild(el("div", {class: "opt", id: "row-" + o.key}, [head, doc, el("div", {class: "ctrl"}, renderers[o.kind](o))]));
       });
       var card = el("details", {class: "card"}, [el("summary", {text: g.name}), el("div", {class: "body"}, [grid])]);
       card.open = g.name !== "Death Link";
@@ -383,7 +389,24 @@
     return "";
   }
 
+  function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+  function showChanges() {
+    var changed = [];
+    Object.keys(OPTIONS).forEach(function (k) {
+      var o = OPTIONS[k], diff = !same(values[k], o.default);
+      var row = $("row-" + k);
+      if (row) row.classList.toggle("changed", diff);
+      if (diff) changed.push(o.name + ": " + (o.kind === "set" ? (values[k].join(", ") || "none") :
+                                                 o.kind === "toggle" && values[k] !== "random" ? (values[k] ? "on" : "off") : values[k]));
+    });
+    $("presetNote").textContent = changed.length
+      ? "Changed from the defaults (marked below): " + changed.join(" · ")
+      : "All options are at their defaults.";
+  }
+
   function update() {
+    showChanges();
     var err = nameError();
     $("nameErr").textContent = $("pname").dataset.touched ? err : "";
     $("download").disabled = $("copy").disabled = !!err;
@@ -399,12 +422,14 @@
   $("sub").textContent = "Player options · world " + DATA.world_version + " · Archipelago " + DATA.ap_version +
                          " – choose your options and download the YAML for the multiworld host.";
   var preset = $("preset");
-  preset.appendChild(el("option", {value: "", text: "Defaults"}));
+  var START = "Standard" in DATA.presets ? "Standard" : "";
+  if (!START) preset.appendChild(el("option", {value: "", text: "Defaults"}));
   Object.keys(DATA.presets).forEach(function (p) { preset.appendChild(el("option", {value: p, text: p})); });
+  preset.value = START;
   preset.addEventListener("change", function () { applyPreset(preset.value); renderGroups(); renderLists(); update(); });
   $("pname").addEventListener("input", function () { $("pname").dataset.touched = "1"; update(); });
   $("pdesc").addEventListener("input", update);
-  $("reset").addEventListener("click", function () { preset.value = ""; applyPreset(""); renderGroups(); renderLists(); update(); });
+  $("reset").addEventListener("click", function () { preset.value = START; applyPreset(START); renderGroups(); renderLists(); update(); });
   $("download").addEventListener("click", function () {
     if (nameError()) return;
     var a = el("a", {href: URL.createObjectURL(new Blob([yaml()], {type: "text/yaml"})), download: fileName()});
@@ -423,7 +448,7 @@
     t.remove();
   }
 
-  applyPreset("");
+  applyPreset(START);
   renderGroups();
   renderLists();
   update();
