@@ -20,7 +20,7 @@ played yet. Expect bugs and please report them in the issues.
 - **Goal:** win #111 "Wrath of Eddie" (needs time trials, the "Finale: #111" item and "Samantha's Big Tease"),
   or win a set number of events.
 - **Death Link:** losing a race sends a death; a received death blows your engine ("Blown Engine").
-
+  Tournaments count as a whole: a lost round sends nothing, losing or leaving the tournament does.
 - **First car:** with a random start car any car can be the first one; the client makes sure you can buy it.
 
 Details: [game page](worlds/nfsu/docs/en_Need%20for%20Speed%20Underground.md) ·
@@ -39,16 +39,12 @@ You need your own copy of the game (NTSC-U `SLUS-20811`, as `.iso`). This projec
    player name, pick a preset or options and click *Download YAML*.
 4. **Enable PINE in PCSX2** (once): *Tools → Show Advanced Settings*, then *Settings → Advanced → PINE Settings*:
    tick *Enable*, slot **28011**.
-5. Generate and host the game in the Archipelago Launcher (*Generate*, then *Host*), start the game in PCSX2,
+5. Generate the game in the Archipelago Launcher (*Generate*), host it (upload the `.zip` on
+   [archipelago.gg](https://archipelago.gg/uploads) or *Host* in the Launcher), start the game in PCSX2,
    open **NFSU Client** from the Launcher and connect. Start a new Underground Mode career.
 
 Every step is explained in detail for first-time users in the
 [setup guide](worlds/nfsu/docs/setup_en.md).
-
-## Not in this version
-
-Traps, style point checks and the in-game "now playing" item banner exist only as unfinished code; their memory
-addresses have not been found yet. Only the NTSC-U version of the game is supported.
 
 ## Development
 
