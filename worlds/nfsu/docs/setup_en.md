@@ -47,8 +47,7 @@ from the newest release and double-click it – it opens in your web browser and
 3. Click **Download YAML**.
 
 Alternative: in the Archipelago Launcher choose **Generate Template Options** and edit
-`Need for Speed Underground.yaml` in a text editor. Example files are in the project's
-[`examples/`](https://github.com/Knaidev/nfsu-archipelago/tree/main/examples) folder.
+`Need for Speed Underground.yaml` in a text editor.
 
 ## 4. Generating and hosting a game
 

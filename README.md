@@ -24,7 +24,7 @@ played yet. Expect bugs and please report them in the issues.
 - **First car:** with a random start car any car can be the first one; the client makes sure you can buy it.
 
 Details: [game page](worlds/nfsu/docs/en_Need%20for%20Speed%20Underground.md) ·
-[setup guide](worlds/nfsu/docs/setup_en.md) · example options in [`examples/`](examples).
+[setup guide](worlds/nfsu/docs/setup_en.md).
 
 ## Quick start
 
