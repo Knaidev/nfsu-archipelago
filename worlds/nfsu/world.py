@@ -151,5 +151,5 @@ class NFSUWorld(World):
         data["star_gate_by_tier"] = {str(t): star_gate(self, t) for t in range(1, 6)}
         data["starting_car"] = self.starting_car
         data["event_packs"] = {name: pack for name, pack in zip(self.pack_items, self.packs)} if self.packs else None
-        data["world_version"] = "0.3.2"
+        data["world_version"] = "0.3.3"
         return data
