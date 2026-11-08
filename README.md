@@ -21,18 +21,29 @@ played yet. Expect bugs and please report them in the issues.
   or win a set number of events.
 - **Death Link:** losing a race sends a death; a received death blows your engine ("Blown Engine").
 
+- **First car:** with a random start car any car can be the first one; the client makes sure you can buy it.
+
 Details: [game page](worlds/nfsu/docs/en_Need%20for%20Speed%20Underground.md) ·
-[setup guide](worlds/nfsu/docs/setup_en.md) · example options in [`examples/`](examples) · YAML creator page
-`nfsu_options.html` in each release.
+[setup guide](worlds/nfsu/docs/setup_en.md) · example options in [`examples/`](examples).
 
-## Installation
+## Quick start
 
-1. Install [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.8 or newer.
-2. Download `nfsu.apworld` from the [releases](../../releases) and double-click it.
-3. Set up PCSX2 with PINE (slot 28011) and connect with **NFSU Client** – see the
-   [setup guide](worlds/nfsu/docs/setup_en.md).
+You need your own copy of the game (NTSC-U `SLUS-20811`, as `.iso`). This project contains no game files.
 
-You need your own copy of the game. This project contains no game files.
+1. Install [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.8 or newer and
+   [PCSX2](https://pcsx2.net/downloads) 2.x.
+2. From the [releases page](../../releases) (newest release, *Assets*) download **`nfsu.apworld`** and
+   **`nfsu_options.html`**. Double-click `nfsu.apworld` to install it (close the Archipelago Launcher first;
+   a newer version replaces the old one).
+3. **Create your YAML:** double-click `nfsu_options.html` – it opens in your browser (works offline). Enter your
+   player name, pick a preset or options and click *Download YAML*.
+4. **Enable PINE in PCSX2** (once): *Tools → Show Advanced Settings*, then *Settings → Advanced → PINE Settings*:
+   tick *Enable*, slot **28011**.
+5. Generate and host the game in the Archipelago Launcher (*Generate*, then *Host*), start the game in PCSX2,
+   open **NFSU Client** from the Launcher and connect. Start a new Underground Mode career.
+
+Every step is explained in detail for first-time users in the
+[setup guide](worlds/nfsu/docs/setup_en.md).
 
 ## Not in this version
 

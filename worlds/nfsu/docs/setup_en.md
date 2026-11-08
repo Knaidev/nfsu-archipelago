@@ -7,32 +7,69 @@
 ## Required software
 
 - [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.8 or newer
-- `nfsu.apworld` from this project's releases
-- [PCSX2](https://pcsx2.net/) 2.x with PINE support
-- Your own NTSC-U copy of Need for Speed: Underground (PS2, SLUS-20811). Other versions are not supported.
+- From this project's [releases page](https://github.com/Knaidev/nfsu-archipelago/releases) (newest release,
+  section *Assets*): `nfsu.apworld` and `nfsu_options.html`
+- [PCSX2](https://pcsx2.net/downloads) 2.x and a PS2 BIOS dumped from your own console (PCSX2's first-start
+  wizard asks for it)
+- Your own NTSC-U copy of Need for Speed: Underground (PS2, SLUS-20811) as an `.iso`. Other versions are not
+  supported.
 
-## Installing the apworld
+## 1. Installing the apworld
 
-Double-click `nfsu.apworld`, or copy it into the `custom_worlds` folder of your Archipelago installation.
+1. Close the Archipelago Launcher if it is open.
+2. Double-click `nfsu.apworld`. Archipelago copies it into the `custom_worlds` folder of your installation
+   (Windows: `C:\ProgramData\Archipelago\custom_worlds`). A newer version simply replaces the old file.
+   If double-clicking does not work, copy the file into that folder yourself.
+3. Start the Launcher again. You should now see **NFSU Client** in its list.
 
-## Setting up PCSX2
+## 2. Setting up PCSX2 (PINE)
 
-1. In PCSX2, enable **Tools → Show Advanced Settings**.
-2. Go to **Settings → Advanced → PINE Settings**, enable PINE and keep the slot at **28011**.
+The client talks to PCSX2 over **PINE**, PCSX2's built-in interface for tools. It is off by default and its
+settings page is hidden, so you switch it on once (menu names as in PCSX2's English interface):
 
-## Creating your options file
+1. Start PCSX2 and finish the first-start wizard (BIOS, game folder).
+2. In the menu bar open **Tools** and click **Show Advanced Settings**. If a warning appears, confirm it.
+3. Open **Settings** and choose **Advanced** (in the menu or in the list on the left of the settings window).
+4. Scroll down to **PINE Settings**, tick **Enable** and leave **Slot** at **28011**.
+5. Close the settings window. The setting is saved; you only do this once. If the client later cannot find PCSX2,
+   restart PCSX2.
 
-The easiest way: open **`nfsu_options.html`** from the release in your browser, pick your options and click
-**Download YAML** (it works offline; option descriptions are behind the **?** buttons).
+You can switch *Show Advanced Settings* off again afterwards – PINE stays enabled.
 
-Or, in the Archipelago Launcher, choose **Generate Template Options**, then edit
-`Need for Speed Underground.yaml`. Example files are in the project's `examples/` folder.
+## 3. Creating your options file (YAML)
 
-## Connecting
+**YAML creator page:** download [`nfsu_options.html`](https://github.com/Knaidev/nfsu-archipelago/releases)
+from the newest release and double-click it – it opens in your web browser and works offline, nothing is uploaded.
 
-1. Start PCSX2 and load the game. Use a fresh Underground Mode profile for a new seed.
-2. Start **NFSU Client** from the Archipelago Launcher.
-3. Connect to the room (`/connect address:port`).
+1. Enter your **player name** (this is your slot name for connecting later).
+2. Pick a **preset** (Relaxed / Standard / Hardcore) or set the options yourself. Options that differ from the
+   defaults are marked; the **?** buttons explain each option.
+3. Click **Download YAML**.
+
+Alternative: in the Archipelago Launcher choose **Generate Template Options** and edit
+`Need for Speed Underground.yaml` in a text editor. Example files are in the project's
+[`examples/`](https://github.com/Knaidev/nfsu-archipelago/tree/main/examples) folder.
+
+## 4. Generating and hosting a game
+
+If someone else hosts the multiworld, send them your YAML and skip to step 5.
+
+1. Put your YAML (and the YAMLs of everyone else) into the `Players` folder of your Archipelago installation
+   (Windows: `C:\ProgramData\Archipelago\Players`). Remove YAMLs you do not want to play with.
+2. In the Launcher click **Generate**. The game is written as a `.zip` into the `output` folder.
+3. In the Launcher click **Host** and choose that `.zip`. The server window shows the address, normally
+   `localhost:38281` on your own PC. Others connect to your IP address and that port.
+
+Games with this apworld cannot be hosted on archipelago.gg, because the website only knows the official worlds.
+
+## 5. Connecting
+
+1. Start PCSX2 and boot the game.
+2. Start **NFSU Client** from the Archipelago Launcher. Its log shows `Connected to PCSX2 (SLUS-20811)` once it
+   finds the game (`/pcsx2` shows the connection state).
+3. Enter the server address (e.g. `localhost:38281`) at the top and click **Connect**, then enter your player name.
+4. For a new game start a **new Underground Mode career**. If the game loads an old profile from the memory card,
+   create a new profile instead.
 
 After the prologue you choose your first car. While you choose it, the client shows 500,000 Bank so any car (also
 an expensive random start car) can be bought; after the purchase the Bank is set to what the game's 10,000 would have
