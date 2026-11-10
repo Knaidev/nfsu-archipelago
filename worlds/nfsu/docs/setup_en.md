@@ -94,3 +94,7 @@ client, the game goes back to its normal unlock rules.
 - The count of received items is stored on the Archipelago server, not in your save. If you load an older save
   or savestate, Bank that was already paid out is not paid again.
 - Only one program can use PINE at a time; close other PINE tools while the client runs.
+- The client changes a few game routines in memory while it runs and restores them when you close it. A
+  **savestate** made while the client runs contains these changes: if you load it without the client, events,
+  shop parts, cars and race Bank stay locked. Start the client (it takes over again) or load a normal memory
+  card save instead.

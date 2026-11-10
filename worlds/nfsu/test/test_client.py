@@ -1108,3 +1108,15 @@ class TestClientModules(unittest.TestCase):
         from worlds.LauncherComponents import components
         self.assertTrue(issubclass(context.NFSUContext, object))
         self.assertIn("NFSU Client", [c.display_name for c in components])
+
+
+class TestSlotData(unittest.TestCase):
+    def test_unknown_events_are_ignored(self):
+        """A seed from another apworld version may list events this client does not know."""
+        with self.assertLogs("NFSU", level="WARNING"):
+            s = Settings.from_slot_data({"event_packs": {"Event Pack 18": [9, 999]}})
+        self.assertEqual(s.event_packs, {"Event Pack 18": [9]})
+
+    def test_broken_values_raise_for_the_client_to_report(self):
+        with self.assertRaises((ValueError, TypeError, AttributeError)):
+            Settings.from_slot_data({"event_packs": {"Event Pack 18": ["x"]}})

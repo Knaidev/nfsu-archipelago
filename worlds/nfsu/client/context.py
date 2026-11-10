@@ -163,7 +163,13 @@ class NFSUContext(CommonContext):
 
     def on_package(self, cmd: str, args: Dict[str, Any]) -> None:
         if cmd == "Connected":
-            settings = Settings.from_slot_data(args.get("slot_data") or {})
+            try:
+                settings = Settings.from_slot_data(args.get("slot_data") or {})
+            except (ValueError, TypeError, AttributeError):
+                logger.error("NFSU: the seed's slot data cannot be read. Was it generated with another apworld "
+                             "version? The game is not synchronised.")
+                self.sync = None
+                return
             if self.death_link_override is not None:
                 settings.death_link = self.death_link_override
             store = ServerCounterStore(self, asyncio.get_running_loop())

@@ -10,6 +10,9 @@
   4. applies one-time items (Bank, traps) exactly once, using a counter stored in the save data,
   5. handles traps and Death Link around races,
   6. reports the goal.
+
+Dormant: traps (except the Bank Tax Trap) and the item banner have no game addresses yet (data/addresses.py);
+their code paths are skipped with a "not mapped" note until the addresses are found.
 """
 import logging
 import time
@@ -89,7 +92,13 @@ class Settings:
             s.star_gate_by_tier = {int(k): int(v) for k, v in data["star_gate_by_tier"].items()}
         s.starting_car = data.get("starting_car")
         if data.get("event_packs"):
-            s.event_packs = {str(k): [int(n) for n in v] for k, v in data["event_packs"].items()}
+            packs = {str(k): [int(n) for n in v] for k, v in data["event_packs"].items()}
+            unknown = sorted({n for events in packs.values() for n in events if n not in EVENTS_BY_NUMBER})
+            if unknown:
+                # A seed from another apworld version: ignore what this client does not know instead of failing later.
+                logger.warning("NFSU: the seed lists unknown events %s – ignored. Was it generated with another "
+                               "apworld version?", unknown)
+            s.event_packs = {k: [n for n in events if n in EVENTS_BY_NUMBER] for k, events in packs.items()}
         return s
 
 
@@ -593,68 +602,9 @@ class GameSync:
                 self.traps.race_ended(game, self.run)
             self.was_racing = racing
             out.send_death = self._track_tournament(racing, in_memory) or out.send_death
-            # The results popups exist while the race is still loaded (race_active stays set until the map).
-            # Once the popups are gone while the race is still loaded (restart from the results screen), the next
-            # results screen counts again.
-            if self.race_seen:
-                result = self.run("race result", game.race_result)
-                if result is None:
-                    if racing and self.result_handled:   # restarted from the results screen: a new attempt
-                        self.result_handled = False
-                        self.blown_handled = False
-                        self.death_forced = False
-                        self.death_sent = False
-                elif not self.result_handled:
-                    self.result_handled = True
-                    out.messages.append("Race result: %s, position %s of %s%s" % (
-                        "won" if result.won else "lost", result.position or "?", result.racers or "?",
-                        TOURNAMENT_ROUND if self.tournament is not None else ""))
-                    # One death per attempt: none after a blown engine already sent one or a received death.
-                    # Tournaments are judged by their end (_track_tournament), not per round.
-                    if (s.death_link and self.tournament is None and not self.death_sent and not self.blown_handled
-                            and self.death.should_send(result, self.death_forced)):
-                        out.send_death = "lost a street race" if not result.last_place else "finished dead last"
-                        self.death_sent = True
-            # Drag: a blown engine drops the player (pause menu or results). Only checked before the result is
-            # known: on the results screen the heat object is stale and can read as "blown" after a win.
-            if self.race_seen and racing and not self.result_handled:
-                blown = self.run("engine state", game.engine_blown)
-                if blown and not self.blown_handled:
-                    self.blown_handled = True
-                    # Tournament rounds read as blown (seen in game), so no engine claim there.
-                    out.messages.append("Race result: lost" + TOURNAMENT_ROUND if self.tournament is not None
-                                        else "Race result: lost, blown engine")
-                    if (s.death_link and self.tournament is None and not self.death_sent
-                            and self.death.should_send(RaceResult(False), self.death_forced)):
-                        out.send_death = "blew the engine"
-                        self.death_sent = True
-                elif blown is False and self.blown_handled:
-                    # Race restarted from the pause menu: an own blowout counts again. death_forced stays set
-                    # until the race is left or restarted from the results screen, so a received death is never
-                    # echoed back (seen in game: the flag read 1, 0, 1 after a received death).
-                    self.blown_handled = False
-                    self.death_sent = False
-            elif not racing:
-                self.blown_handled = False
-            # A received death switched the engine heat check on outside drag: off again once that attempt is over
-            # (results popups shown, engine no longer blown = restarted, or back on the map). Independent of
-            # race_seen: in one test the client connected during a drift, the flag stayed 1 and the restarted
-            # drift ran as a drag race.
-            if self.heat_switched_on:
-                over = not racing
-                if racing:
-                    if self.run("race result", game.race_result) is not None:
-                        over = True
-                    else:
-                        blown = self.run("engine state", game.engine_blown)
-                        if blown:
-                            self.heat_blow_seen = True
-                        elif blown is False and self.heat_blow_seen:
-                            over = True
-                if over:
-                    self.heat_switched_on = False
-                    self.heat_blow_seen = False
-                    self.run("engine heat", game.set_engine_heat_enabled, False)
+            self._judge_result(racing, out)
+            self._judge_blown_engine(racing, out)
+            self._end_forced_heat(racing)
         if self.death_pending and racing is False:
             self.death_pending = False
             out.messages.append("Death Link received outside a race – ignored.")
@@ -664,6 +614,80 @@ class GameSync:
         if banner is not None:
             self.run("item banner", game.show_banner, *banner)
         return out
+
+    def _judge_result(self, racing: bool, out: TickResult) -> None:
+        """Results screen of a race: logs the result once per attempt and sends a death for a loss."""
+        s, game = self.s, self.game
+        # The results popups exist while the race is still loaded (race_active stays set until the map).
+        # Once the popups are gone while the race is still loaded (restart from the results screen), the next
+        # results screen counts again.
+        if self.race_seen:
+            result = self.run("race result", game.race_result)
+            if result is None:
+                if racing and self.result_handled:   # restarted from the results screen: a new attempt
+                    self.result_handled = False
+                    self.blown_handled = False
+                    self.death_forced = False
+                    self.death_sent = False
+            elif not self.result_handled:
+                self.result_handled = True
+                out.messages.append("Race result: %s, position %s of %s%s" % (
+                    "won" if result.won else "lost", result.position or "?", result.racers or "?",
+                    TOURNAMENT_ROUND if self.tournament is not None else ""))
+                # One death per attempt: none after a blown engine already sent one or a received death.
+                # Tournaments are judged by their end (_track_tournament), not per round.
+                if (s.death_link and self.tournament is None and not self.death_sent and not self.blown_handled
+                        and self.death.should_send(result, self.death_forced)):
+                    out.send_death = "lost a street race" if not result.last_place else "finished dead last"
+                    self.death_sent = True
+
+    def _judge_blown_engine(self, racing: bool, out: TickResult) -> None:
+        """Drag: a blown engine before the result is known counts as a loss (once per attempt)."""
+        s, game = self.s, self.game
+        # Drag: a blown engine drops the player (pause menu or results). Only checked before the result is
+        # known: on the results screen the heat object is stale and can read as "blown" after a win.
+        if self.race_seen and racing and not self.result_handled:
+            blown = self.run("engine state", game.engine_blown)
+            if blown and not self.blown_handled:
+                self.blown_handled = True
+                # Tournament rounds read as blown (seen in game), so no engine claim there.
+                out.messages.append("Race result: lost" + TOURNAMENT_ROUND if self.tournament is not None
+                                    else "Race result: lost, blown engine")
+                if (s.death_link and self.tournament is None and not self.death_sent
+                        and self.death.should_send(RaceResult(False), self.death_forced)):
+                    out.send_death = "blew the engine"
+                    self.death_sent = True
+            elif blown is False and self.blown_handled:
+                # Race restarted from the pause menu: an own blowout counts again. death_forced stays set
+                # until the race is left or restarted from the results screen, so a received death is never
+                # echoed back (seen in game: the flag read 1, 0, 1 after a received death).
+                self.blown_handled = False
+                self.death_sent = False
+        elif not racing:
+            self.blown_handled = False
+
+    def _end_forced_heat(self, racing: bool) -> None:
+        """Switches the engine heat check off again after a received death (see _apply_death)."""
+        game = self.game
+        # A received death switched the engine heat check on outside drag: off again once that attempt is over
+        # (results popups shown, engine no longer blown = restarted, or back on the map). Independent of
+        # race_seen: in one test the client connected during a drift, the flag stayed 1 and the restarted
+        # drift ran as a drag race.
+        if self.heat_switched_on:
+            over = not racing
+            if racing:
+                if self.run("race result", game.race_result) is not None:
+                    over = True
+                else:
+                    blown = self.run("engine state", game.engine_blown)
+                    if blown:
+                        self.heat_blow_seen = True
+                    elif blown is False and self.heat_blow_seen:
+                        over = True
+            if over:
+                self.heat_switched_on = False
+                self.heat_blow_seen = False
+                self.run("engine heat", game.set_engine_heat_enabled, False)
 
     def _handle_reward_popups(self) -> Optional[int]:
         """Returns the event number while its win popups are on screen (once per results screen it also rewrites
