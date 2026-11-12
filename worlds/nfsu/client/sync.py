@@ -25,7 +25,7 @@ from ..data.cars import CARS, UNLOCKABLE_CARS
 from ..data.events import EVENTS_BY_NUMBER, GOAL_EVENT, TIME_TRIALS
 from ..data.parts import PERFORMANCE, VISUAL
 from ..logic import full_stars, reputation_from
-from ..items import (BANK_ITEMS, FINALE_ITEM, KEY_ITEM, UNIQUE_ITEM_NAMES, VISUAL_ITEM_LEVELS, car_item_name,
+from ..items import (BANK_VALUES, FINALE_ITEM, KEY_ITEM, UNIQUE_ITEM_NAMES, VISUAL_ITEM_LEVELS, car_item_name,
                      progressive_name)
 from ..data.events import CAREER_EVENTS
 from ..locations import EVENT_CHECK_IDS, tier_of
@@ -49,6 +49,8 @@ FIRST_CAR_BUDGET = 10000
 #: bought without knowing its price. The purchase is then undone to what the 10,000 would have left.
 FIRST_CAR_FAKE_BANK = 500000
 MAX_CAR_PRICE = 200000
+#: Ticks (about 0.1 s each) an engine must read as fine before a blown engine counts as the player's.
+ENGINE_OK_TICKS = 20
 #: Suffix for race results inside a tournament: rounds never send a death, the tournament is judged at its end.
 TOURNAMENT_ROUND = " (tournament round – no Death Link, the tournament counts at its end)"
 BANK_TAX_PERCENT = 10
@@ -484,6 +486,7 @@ class GameSync:
         self.counter_store = counter_store
         self.counter_ahead_logged = False
         self.waiting_for_career_logged = False
+        self.prologue_seen_open = False     # this session saw a career before its prologue was won
         self.won_seen: Optional[Set[int]] = None
         self.popups_written_for: Optional[tuple] = None
         #: location id -> "Turbo Upgrade" / "Hookshot for Bob"; set by the network client (scouted locations).
@@ -499,6 +502,8 @@ class GameSync:
         self.bank_patch_logged: Optional[bool] = None
         self.tournament: Optional[int] = None      # tournament being raced: judged by its end, not per round
         self.tournament_forced = False             # a received death hit this tournament
+        self.tournament_was_won = False            # the tournament was already won when it was entered
+        self.tournament_won_seen = False           # the last results screen of this tournament showed a win
         self.was_racing: Optional[bool] = None
         self.race_seen = False
         self.result_handled = False
@@ -506,6 +511,7 @@ class GameSync:
         self.death_forced = False
         self.death_sent = False   # a death was sent for the current race attempt
         self.blown_handled = False
+        self.engine_ok_ticks = 0      # consecutive ticks with a healthy engine in this race
         self.heat_switched_on = False
         self.heat_blow_seen = False   # the engine read "blown" after we switched the heat check on
         self.reputation: Optional[float] = None
@@ -573,6 +579,8 @@ class GameSync:
 
         # 3. one-time items – only in a started career: Bank written on the title screen or during the prologue
         #    would be lost when a new career is created (the counter would still say "paid").
+        if in_memory is not None and PROLOGUE_EVENT not in in_memory:
+            self.prologue_seen_open = True
         if in_memory is not None and PROLOGUE_EVENT in in_memory:
             out.messages += self._apply_consumables(received, in_memory)
         elif not self.waiting_for_career_logged:
@@ -612,7 +620,10 @@ class GameSync:
         # 5. "now playing" banner for received/sent items
         banner = self.banners.next_due()
         if banner is not None:
-            self.run("item banner", game.show_banner, *banner)
+            try:
+                game.show_banner(*banner)
+            except NotMapped:
+                pass   # dormant feature (no banner addresses yet): nothing to tell the player
         return out
 
     def _judge_result(self, racing: bool, out: TickResult) -> None:
@@ -631,6 +642,8 @@ class GameSync:
                     self.death_sent = False
             elif not self.result_handled:
                 self.result_handled = True
+                if self.tournament is not None:
+                    self.tournament_won_seen = result.won   # results popups only show when a tournament ends
                 out.messages.append("Race result: %s, position %s of %s%s" % (
                     "won" if result.won else "lost", result.position or "?", result.racers or "?",
                     TOURNAMENT_ROUND if self.tournament is not None else ""))
@@ -648,8 +661,17 @@ class GameSync:
         # known: on the results screen the heat object is stale and can read as "blown" after a win.
         if self.race_seen and racing and not self.result_handled:
             blown = self.run("engine state", game.engine_blown)
-            if blown and not self.blown_handled:
+            # While a drag race loads, the heat object can still be the last race's and read "blown" (seen in
+            # game twice: a death was sent from the loading screen). Only an engine that ran fine for a moment
+            # in this race and then blows counts; "no engine to judge" starts the count again.
+            health = self.run("engine state", game.engine_health)
+            if health is None:
+                self.engine_ok_ticks = 0
+            elif health is False:
+                self.engine_ok_ticks += 1
+            if blown and not self.blown_handled and self.engine_ok_ticks >= ENGINE_OK_TICKS:
                 self.blown_handled = True
+                self.tournament_won_seen = False     # a lost round after an earlier win ("Restart Tournament")
                 # Tournament rounds read as blown (seen in game), so no engine claim there.
                 out.messages.append("Race result: lost" + TOURNAMENT_ROUND if self.tournament is not None
                                     else "Race result: lost, blown engine")
@@ -665,6 +687,7 @@ class GameSync:
                 self.death_sent = False
         elif not racing:
             self.blown_handled = False
+            self.engine_ok_ticks = 0
 
     def _end_forced_heat(self, racing: bool) -> None:
         """Switches the engine heat check off again after a received death (see _apply_death)."""
@@ -722,11 +745,16 @@ class GameSync:
         event = self.run("active event", self.game.active_event) if racing or self.tournament is not None else None
         if racing and event is not None and event != self.tournament and EVENTS_BY_NUMBER[event].tournament:
             self.tournament, self.tournament_forced = event, False
+            self.tournament_was_won = event in self.results   # while it is raced its status is not "won"
+            self.tournament_won_seen = False
             return None
         if self.tournament is None or event == self.tournament or in_memory is None:
             return None
         ended, self.tournament = self.tournament, None
-        if ended in in_memory or not self.s.death_link or self.tournament_forced:
+        # First time: won = the event is now marked as won. A replay of a tournament that was already won goes
+        # back to "won" whatever happens, so there only its last results screen counts.
+        won = self.tournament_won_seen if self.tournament_was_won else ended in in_memory
+        if won or not self.s.death_link or self.tournament_forced:
             return None
         if self.death.should_send(RaceResult(False), False):
             return "lost a tournament"
@@ -857,15 +885,27 @@ class GameSync:
         self.run("death link", self.game.set_speed_scale, SLOWDOWN_SCALE)
         return "nitrous drained, car slowed down."
 
-    def _counter(self):
+    def _counter(self, fresh: bool = False):
         """Returns ((index, flags), save_function) for the received-item counter, or (None, None).
 
-        Preferred: 8 bytes in the game's save data (follows the save file). Fallback: Archipelago data
-        storage on the server (works now, but loading an older save/savestate loses Bank already paid out)."""
+        Preferred: 4 bytes in the game's save data (they follow the save file, so loading an older save or a
+        crash before saving pays the missing Bank again). Fallback: Archipelago data storage on the server."""
         try:
-            return self.game.read_save_block(), self.game.write_save_block
+            block = self.game.read_save_block()
         except NotMapped:
             pass
+        else:
+            if block is None:
+                # Never written in this career. A brand-new career starts at zero; a career from an older client
+                # version takes over the counter that version kept on the server.
+                if fresh or self.counter_store is None:
+                    block = (0, 0)
+                else:
+                    block = self.counter_store.load()
+                    if block is None:
+                        return None, None      # server value not known yet
+                self.game.write_save_block(*block)
+            return block, self.game.write_save_block
         if self.counter_store is None:
             if "ap_save_block" not in self.missing:
                 self.missing.add("ap_save_block")
@@ -891,12 +931,23 @@ class GameSync:
             left = max(0, FIRST_CAR_BUDGET - price)
             self.game.add_bank(left - bank)
             return True, f"First car bought for {price:,} Bank: Bank set to {left:,}."
+        if fresh and self.prologue_seen_open:
+            # This session watched the prologue being won, so it is a brand-new career.
+            if self.s.vanilla_bank_rewards:
+                return False, None   # the prologue pays the 10,000: wait for them
+            # Vanilla Bank Rewards off: the prologue pays nothing either (race Bank patch). The game still sells
+            # the first car and the Bank drops below 0 – that is the purchase.
+            if bank < 0:
+                self.game.add_bank(-bank)
+                return True, "First car bought: Bank set to 0 (races pay no Bank in this game)."
+            if bank == 0:
+                return False, None   # still choosing
         return True, None        # the career already has its car (e.g. a profile from an older version)
 
     def _apply_consumables(self, received: List[str], in_memory: Dict[int, int]) -> List[str]:
         if self.run("Bank items", self.game.bank) is None:
             return []
-        block, save = self._counter()
+        block, save = self._counter(fresh=set(in_memory) == {PROLOGUE_EVENT})
         if block is None:
             return []  # without a persistent counter we would apply Bank twice after a restart
         index, flags = block
@@ -916,14 +967,18 @@ class GameSync:
             if not bought:
                 return msgs       # Starting Bank and Bank items wait until the first car is bought
             flags |= FLAG_FIRST_CAR
+        if self.game.bank() < 0:
+            # A purchase the Bank could not cover: the game allows it for the first car.
+            msgs.append(f"Bank was {self.game.bank():,} – set to 0.")
+            self.game.add_bank(-self.game.bank())
         if not flags & FLAG_STARTING_BANK:
             if self.s.starting_bank:
                 self.game.add_bank(self.s.starting_bank)
                 msgs.append(f"Starting Bank: +{self.s.starting_bank}")
             flags |= FLAG_STARTING_BANK
         for name in received[index:]:
-            if name in BANK_ITEMS:
-                amount = BANK_ITEMS[name] * self.s.bank_multiplier // 100
+            if name in BANK_VALUES:
+                amount = BANK_VALUES[name] * self.s.bank_multiplier // 100
                 self.game.add_bank(amount)
                 msgs.append(f"{name}: +{amount} Bank")
             elif name == "Bank Tax Trap":

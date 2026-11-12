@@ -35,6 +35,8 @@ class WrongGame(Exception):
 
 #: Text of the only results popup after a lost event (NTSC-U, seen in game).
 LOST_POPUP_TEXT = "Sorry, you lost"
+#: First byte of the client's counter in the save data (see AddressMap.ap_save_block).
+SAVE_BLOCK_MAGIC = 0xA5
 
 
 @dataclass
@@ -297,12 +299,13 @@ class NFSUInterface:
 
     # ------------------------------------------------------------------ money
     def bank(self) -> int:
-        return self.pine.read32(self._a("bank"))
+        """Bank as the game sees it: a signed 32-bit value (a too expensive purchase can make it negative)."""
+        value = self.pine.read32(self._a("bank"))
+        return value - (1 << 32) if value & 0x80000000 else value
 
     def add_bank(self, amount: int) -> int:
-        address = self._a("bank")
-        new = max(0, min(0x7FFFFFFF, self.pine.read32(address) + amount))
-        self.pine.write32(address, new)
+        new = max(0, min(0x7FFFFFFF, self.bank() + amount))
+        self.pine.write32(self._a("bank"), new)
         return new
 
     # ------------------------------------------------------------------ race effects (traps, experimental)
@@ -374,6 +377,16 @@ class NFSUInterface:
         heat = self._engine_heat_object()
         return heat is not None and self.pine.read32(heat + self.addr.engine_blown_offset) != 0
 
+    def engine_health(self) -> Optional[bool]:
+        """True = blown, False = running fine, None = no engine to judge (heat check off, as outside drag, or no
+        race object yet/any more, as on a loading or results screen)."""
+        if not self.engine_heat_enabled():
+            return None
+        heat = self._engine_heat_object()
+        if heat is None:
+            return None
+        return self.pine.read32(heat + self.addr.engine_blown_offset) != 0
+
     def blow_engine(self) -> Optional[bool]:
         """Blows the player's engine: the game shows "Blown Engine" and drops the racer. Drag: the game pauses;
         other races (live-tested in a sprint): results screen, "Blown Engine", last place, "you lost" popup.
@@ -441,10 +454,14 @@ class NFSUInterface:
         self.pine.batch_write(writes)
 
     # ------------------------------------------------------------------ AP save block
-    def read_save_block(self) -> Tuple[int, int]:
-        index, flags = self.pine.batch_read([(self._a("ap_save_block"), 4), (self._a("ap_save_block") + 4, 4)])
-        return index, flags
+    def read_save_block(self) -> Optional[Tuple[int, int]]:
+        raw = self.pine.read_bytes(self._a("ap_save_block"), 4)
+        if raw[0] != SAVE_BLOCK_MAGIC:
+            return None          # never written in this career
+        return (raw[1] & 0x7F) | ((raw[2] & 0x7F) << 7), raw[3] & 0x7F
 
     def write_save_block(self, index: int, flags: int) -> None:
         base = self._a("ap_save_block")
-        self.pine.batch_write([(base, 4, index), (base + 4, 4, flags)])
+        index = min(index, 0x3FFF)
+        data = bytes([SAVE_BLOCK_MAGIC, 0x80 | (index & 0x7F), 0x80 | (index >> 7), 0x80 | (flags & 0x7F)])
+        self.pine.batch_write([(base + i, 1, b) for i, b in enumerate(data)])

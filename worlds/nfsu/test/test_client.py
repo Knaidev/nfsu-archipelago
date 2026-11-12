@@ -9,7 +9,7 @@ from typing import Optional
 from ..client import interface as interface_mod
 from ..client.interface import NFSUInterface
 from ..client.pine import Pine
-from ..client.sync import FIRST_CAR_FAKE_BANK, GameSync, MemoryCounterStore, Settings
+from ..client.sync import ENGINE_OK_TICKS, FIRST_CAR_FAKE_BANK, GameSync, MemoryCounterStore, Settings
 from ..locations import EVENT_CHECK_IDS
 
 
@@ -370,7 +370,7 @@ class TestItems(ClientTestBase):
         self.assertEqual(self.server.u32(MAP.bank), 500 + 2000 + 1500)
         sync.tick(received, set())
         self.assertEqual(self.server.u32(MAP.bank), 4000, "no double application")
-        self.assertEqual(self.server.u32(MAP.ap_save_block), 2)
+        self.assertEqual(self.game.read_save_block()[0], 2)
         # A fresh client session (restart) must not apply anything again either.
         self.make_sync(bank_multiplier=150, starting_bank=2000).tick(received, set())
         self.assertEqual(self.server.u32(MAP.bank), 4000)
@@ -381,10 +381,16 @@ class TestItems(ClientTestBase):
         self.server.u32(MAP.bank, 0)
         sync.tick(["Bank Bonus (1000)"], set())
         self.assertEqual(self.server.u32(MAP.bank), 0)
-        self.assertEqual(self.server.u32(MAP.ap_save_block), 0, "nothing marked as paid")
+        self.assertIsNone(self.game.read_save_block(), "nothing marked as paid")
         self.server.event(0, status=2)
         sync.tick(["Bank Bonus (1000)"], set())
-        self.assertEqual(self.server.u32(MAP.bank), 3000)
+        self.assertEqual(self.server.u32(MAP.bank), 0, 'the game has not paid the 10,000 yet')
+        self.server.u32(MAP.bank, 10000)
+        sync.tick(["Bank Bonus (1000)"], set())
+        self.assertEqual(self.server.u32(MAP.bank), FIRST_CAR_FAKE_BANK)
+        self.server.u32(MAP.bank, FIRST_CAR_FAKE_BANK - 9500)
+        sync.tick(["Bank Bonus (1000)"], set())
+        self.assertEqual(self.server.u32(MAP.bank), 500 + 3000)
 
     def test_first_car_with_fake_bank(self):
         sync = self.make_sync(starting_bank=2000)
@@ -401,6 +407,55 @@ class TestItems(ClientTestBase):
         # A restarted client must neither fake nor pay again.
         self.make_sync(starting_bank=2000).tick(["Bank Bonus (1000)"], set())
         self.assertEqual(self.server.u32(MAP.bank), 3000)
+
+    def test_first_car_without_race_bank(self):
+        """Vanilla Bank Rewards off: the prologue pays nothing, the first car is bought from Bank 0."""
+        self.server.event(0, status=0)
+        sync = self.make_sync(starting_bank=2000, vanilla_bank_rewards=False)
+        self.server.u32(MAP.bank, 0)
+        sync.tick(["Bank Bonus (1000)"], set())
+        self.server.event(0, status=2)
+        sync.tick(["Bank Bonus (1000)"], set())
+        self.assertEqual(self.server.u32(MAP.bank), 0, 'nothing paid while the car is chosen')
+        self.server.u32(MAP.bank, (-8500) & 0xFFFFFFFF)
+        messages = sync.tick(["Bank Bonus (1000)"], set()).messages
+        self.assertEqual(self.server.u32(MAP.bank), 3000)
+        self.assertTrue(any('First car bought' in m for m in messages), messages)
+
+    def test_older_save_gets_lost_bank_again(self):
+        """The counter follows the save: after a crash before saving, the lost Bank item is paid again."""
+        received = ["Bank Bonus (1000)", "Bank Bonus (2500)"]
+        self.server.event(1, status=2)                      # a running career
+        self.server.u32(MAP.bank, 0)
+        self.make_sync().tick(received[:1], set())
+        saved = (self.server.u32(MAP.bank), self.server.u32(MAP.ap_save_block))     # the game saves here
+        self.make_sync().tick(received, set())
+        self.assertEqual(self.server.u32(MAP.bank), 3500)
+        self.server.u32(MAP.bank, saved[0])                 # crash: the older save is loaded
+        self.server.u32(MAP.ap_save_block, saved[1])
+        self.make_sync().tick(received, set())
+        self.assertEqual(self.server.u32(MAP.bank), 3500, "the 2,500 are paid again, the 1,000 are not")
+
+    def test_counter_moves_from_the_server_into_the_save(self):
+        """A career played with an older client version: its server counter is taken over once."""
+        received = ["Bank Bonus (1000)", "Bank Bonus (2500)"]
+        self.server.event(1, status=2)
+        self.server.u32(MAP.bank, 700)
+        store = MemoryCounterStore(index=1, flags=3)        # the 1,000 were already paid by the old client
+        GameSync(self.game, Settings(), counter_store=store).tick(received, set())
+        self.assertEqual(self.server.u32(MAP.bank), 700 + 2500)
+        self.assertEqual(self.game.read_save_block(), (2, 3))
+
+    def test_negative_bank_is_repaired(self):
+        sync = self.make_sync()
+        self.server.u32(MAP.bank, 10000)
+        sync.tick([], set())
+        self.server.u32(MAP.bank, FIRST_CAR_FAKE_BANK - 9500)
+        sync.tick([], set())
+        self.server.u32(MAP.bank, (-8500) & 0xFFFFFFFF)
+        messages = sync.tick([], set()).messages
+        self.assertEqual(self.server.u32(MAP.bank), 0)
+        self.assertTrue(any('-8,500' in m for m in messages), messages)
 
     def test_first_car_cheap_keeps_vanilla_change(self):
         sync = self.make_sync()
@@ -497,13 +552,29 @@ class TestRaces(ClientTestBase):
         sync = self.make_sync(death_link=True)
         self.server.event(9, status=3)                                # #9 drag tournament is being raced
         self.assertIsNone(self.race(sync, [], 2, back_to_map=False)[1].send_death, "a lost round is no death")
-        self.assertIsNone(self.race(sync, [], 1, back_to_map=False)[1].send_death)
+        self.assertIsNone(self.race(sync, [], 3, back_to_map=False)[1].send_death)
         self.server.event(9, status=1)                                # tournament lost: open again
         self.server.u32(MAP.race_active, 0)
         self.assertEqual(sync.tick([], set()).send_death, "lost a tournament")
         self.assertIsNone(sync.tick([], set()).send_death)
         self.server.event(9, status=3)                                # second try, won
         self.race(sync, [], 3, back_to_map=False)
+        self.server.event(9, status=2)
+        self.server.u32(MAP.race_active, 0)
+        self.assertIsNone(sync.tick([], set()).send_death)
+
+    def test_replayed_tournament_is_judged_by_its_results_screen(self):
+        """A tournament that was won before stays "won" in memory, so a lost replay needs the screen."""
+        sync = self.make_sync(death_link=True)
+        self.server.event(9, status=2)
+        sync.tick([], set())
+        self.server.event(9, status=3)                                # replay, lost
+        self.assertIsNone(self.race(sync, [], 4, back_to_map=False)[1].send_death)
+        self.server.event(9, status=2)
+        self.server.u32(MAP.race_active, 0)
+        self.assertEqual(sync.tick([], set()).send_death, "lost a tournament")
+        self.server.event(9, status=3)                                # replay, won
+        self.race(sync, [], 1, back_to_map=False)
         self.server.event(9, status=2)
         self.server.u32(MAP.race_active, 0)
         self.assertIsNone(sync.tick([], set()).send_death)
@@ -543,7 +614,8 @@ class TestRaces(ClientTestBase):
         self.server.u32(MAP.race_active, 0)
         sync.tick([], set())                                        # on the map
         self.server.u32(MAP.race_active, 1)
-        sync.tick([], set())
+        for _ in range(ENGINE_OK_TICKS):                            # the engine runs fine for a moment
+            sync.tick([], set())
 
     def blown(self):
         return self.server.u32(self.HEAT + MAP.engine_blown_offset)
@@ -557,6 +629,20 @@ class TestRaces(ClientTestBase):
         self.assertEqual(self.server.u8(MAP.force_race_loss), 0)
         self.assertIsNone(out.send_death, "a received death is not echoed")
         self.assertIsNone(sync.tick([], set()).send_death)
+
+    def test_stale_blown_flag_while_loading_is_no_death(self):
+        """Loading screen of a drag: the heat object of the last race still reads "blown"."""
+        sync = self.make_sync(death_link=True)
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 1)
+        self.drag(sync)
+        out = sync.tick([], set())
+        self.assertIsNone(out.send_death)
+        self.assertNotIn('Race result: lost, blown engine', out.messages)
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 0)      # race running, engine fine
+        for _ in range(ENGINE_OK_TICKS):
+            sync.tick([], set())
+        self.server.u32(self.HEAT + MAP.engine_blown_offset, 1)      # now it really blows
+        self.assertEqual(sync.tick([], set()).send_death, 'blew the engine')
 
     def test_blown_round_in_tournament_is_no_death(self):
         sync = self.make_sync(death_link=True)

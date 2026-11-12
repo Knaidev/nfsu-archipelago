@@ -179,8 +179,12 @@ class AddressMap:
     banner_trigger_size: int = 1
 
     # ---------------------------------------------------------------- Archipelago save block
-    #: 8 unused bytes inside the memory card save data that the client may use:
-    #: u32 received-item index (Bank/traps already applied) + u32 flags. Must survive saving/loading.
+    #: 4 unused bytes inside the memory card save data for the client's received-item counter (Bank/traps
+    #: already applied) and its flags; they follow the save file, so loading an older save pays the difference.
+    #: Encoding (interface.read_save_block): magic 0xA5, index low 7 bits, index high 7 bits, flags – each with
+    #: bit 7 set, so no byte looks like an event status.
+    #: NTSC-U: 0x004ACA58 – the event status table has room for 128 events and the game uses 114 (0..113);
+    #: slots 116..119 stayed untouched by the map and came back from the memory card after a restart.
     ap_save_block: Optional[int] = None
 
     #: Raw game_mode values -> names used by the client ("menu", "career_menu", "racing", "results").
@@ -191,6 +195,7 @@ ADDRESSES: Dict[str, AddressMap] = {
     SERIAL_NTSC_U: AddressMap(
         bank=0x004ADA0C,
         event_table=0x004AC9E4,
+        ap_save_block=0x004ACA58,
         event_stride=1,
         event_status_offset=0,
         event_status_locked=0,
