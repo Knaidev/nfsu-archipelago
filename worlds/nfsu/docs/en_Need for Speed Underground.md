@@ -23,7 +23,7 @@ parts and cars with Bank.
 **Events are items, too.** #1–#5 are open from the start; every other event (#6–#110) is in one
 **Event Pack**. There is one pack per original event set, but the seed decides which events are in it – one
 pack can hold e.g. #8, #19, #43, #44 and #56. You start with a few packs (option *Starting Event Packs*); the
-client lists every new pack in its log. With *Event Packs* off, all events are open as in Alpha 0.1.
+client lists every new pack in its log. With *Event Packs* off, all events are open from the start.
 
 **Reputation stars** come from the visual part items you received (full stars, rounded down, using the game's
 star value of each level). Tournaments still need their original stars in game (e.g. #30 needs 2) and the

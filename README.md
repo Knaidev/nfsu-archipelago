@@ -55,6 +55,18 @@ Every step is explained in detail for first-time users in the
 [PopTracker](https://github.com/black-sliver/PopTracker/releases). Put the `.zip` into PopTracker's `packs` folder,
 open it and click *AP*: it shows all 111 events (checks done, events you can enter), the time trials and your items.
 
+## Known limitations
+
+- Only the PS2 version, NTSC-U (`SLUS-20811`), is supported.
+- Time trials, the choice event #110 and the finale have no checks; they only count for the goal.
+- A few events show one reward popup more than they have checks (the game also unlocks a track there); that
+  popup says "No Archipelago item here.".
+- Death Link for a lost tournament is sent when you return to the race map; "Restart Tournament" on the results
+  screen sends none.
+- Only one program can use PINE at a time. A savestate made while the client runs contains its in-memory patches.
+
+More in the [setup guide](worlds/nfsu/docs/setup_en.md#known-limitations).
+
 ## Development
 
 - `worlds/nfsu/` – the world (`items.py`, `locations.py`, `options.py`, `logic.py`, `rules.py`, `world.py`),

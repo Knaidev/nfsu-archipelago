@@ -7,7 +7,7 @@ Sources (NFS Wiki, retrieved 2026-11-04):
 
 "rep" is the reputation (star) value the wiki lists for one installed part of that level
 ("Rep: +0.5 ★"). Values are fractional, so partial stars exist. Reputation appears to be
-per car (it is shown on the car), see TODO below.
+per car (it is shown on the car); open questions are listed at the end.
 """
 from typing import Dict, NamedTuple, Optional, Tuple
 
@@ -54,11 +54,11 @@ VISUAL: Tuple[VisualCategory, ...] = (
     VisualCategory("Muffler Tip", (None, 200, 300), (None, 0.1, 0.2), (None, 28, 54)),
     VisualCategory("Window Tint", (100, 200, 300), (0.1, 0.1, 0.1), (0, 29, 56)),
     # Headlights/Taillights: the wiki lists one tier (4 parts, 600 Bank, +0.4) without a level heading.
-    # Event pages #60 / #61 say they unlock "Level 3". TODO: confirm there is no Level 1/2.
+    # Event pages #60 / #61 say they unlock "Level 3"; a Level 1/2 is not confirmed.
     VisualCategory("Headlights", (None, None, 600), (None, None, 0.4), (None, None, 60)),
     VisualCategory("Taillights", (None, None, 600), (None, None, 0.4), (None, None, 61)),
     # Paint and Decals: unlock events known, but the wiki gives no cost / reputation values.
-    # TODO: measure in game (reputation before/after applying).
+    # Not measured in game (reputation before/after applying).
     VisualCategory("Paint", (None, None, None), (None, None, None), (0, 23, 65)),
     VisualCategory("Decals", (None, None, None), (None, None, None), (0, 12, 51)),
 )
@@ -80,7 +80,7 @@ UNIQUE_REWARDS: Tuple[UniqueReward, ...] = (
     UniqueReward(47, "Blue Light Special", "visual",
                  ('Rims: Enkei Arashi', 'Rims: Enkei Silverstar', 'Rims: NFSU Livia', 'Rims: Momo Vantage',
                   'Rims: O.Z. Superleggera'), 1.3),
-    # Vinyl reputation value not listed on the wiki. TODO: measure.
+    # Vinyl reputation value not listed on the wiki.
     UniqueReward(68, "Dead of Night", "visual", tuple(f"Vinyl: Samantha Custom {i}" for i in range(1, 11)), None),
     UniqueReward(77, "Samantha's Big Tease", "visual", ("Spoiler: Dual GT", "Spoiler: Duotek", "Spoiler: Katana"), 1.3),
     UniqueReward(96, "Mods to the Max", "performance",
@@ -96,6 +96,5 @@ MODS_TO_THE_MAX_CHOICES = UNIQUE_REWARDS[6].choices
 #: excluding Paint/Decals/Vinyl (unknown): 7.6.
 MAX_REP_LEVEL3_KNOWN = round(sum(c.rep[2] or 0 for c in VISUAL), 1)
 
-# TODO (in game): Is reputation per car? Is the multiplier the rounded-down star sum?
-#                 What is the cap (the user remembers 5 stars; the wiki shows requirements up to x4)?
-#                 Does a Wide Body Kit replace bumper/skirt reputation or add to it?
+# Open questions: Is reputation per car? Is the multiplier the rounded-down star sum? What is the cap
+# (the wiki shows requirements up to 4 stars)? Does a Wide Body Kit replace bumper/skirt reputation or add to it?

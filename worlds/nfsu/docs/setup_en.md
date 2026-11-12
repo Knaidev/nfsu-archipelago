@@ -2,7 +2,7 @@
 
 > **AI notice: the code of this project is not handwritten.** It was written by AI (Claude by Anthropic).
 >
-> **Alpha 0.3** – expect bugs. Please report them on the project's GitHub page.
+> **Version 0.4.** Please report bugs on the project's GitHub page.
 
 ## Required software
 

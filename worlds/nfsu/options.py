@@ -76,7 +76,7 @@ class LogicStrictness(Choice):
 class EventPacks(DefaultOnToggle):
     """Events are items. #1-#5 are open from the start; every other event is in one of up to 54
     "Event Pack" items, and the seed decides which events are in which pack (across all tiers).
-    Tournaments still need their reputation stars in game. Off: tiers open by Star Gates as in 0.1."""
+    Tournaments still need their reputation stars in game. Off: tiers open by Star Gates."""
     display_name = "Event Packs"
 
 

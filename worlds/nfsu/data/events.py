@@ -10,7 +10,7 @@ The Archipelago world uses events 1-111; 0 and 112 are kept here for reference.
 
 Fields:
   bank                 Bank reward (Easy, Medium, Hard) on first win. Taken from the
-                       page's "Rewards" section; falls back to the infobox. Disagreements are marked TODO.
+                       page's "Rewards" section; falls back to the infobox. Disagreements are noted.
   reputation_required  Minimum reputation multiplier ("x N", shown as stars) needed to enter.
                        None = no requirement listed on the wiki.
   optional             Event can be declined in vanilla (time trials, #110).
@@ -37,13 +37,13 @@ EVENTS: Tuple[EventData, ...] = (
     EventData(1, "Jose's Got Your Back", 'Circuit', False, 1, (375, 500, 625), None, False,
               ()),
     EventData(2, 'Last One There Is A Rotten Egg', 'Sprint', False, 1, (375, 500, 635), None, False,
-              ()),  # TODO verify bank: infobox=[375, 500, 625] rewards=[375, 500, 635]
+              ()),  # bank differs on the wiki: infobox=[375, 500, 625] rewards=[375, 500, 635]
     EventData(3, "It's All About Style And Finesse", 'Drift', False, 1, (375, 500, 635), None, False,
-              ('Courses: Drift: Drift Track 1',)),  # TODO verify bank: infobox=[375, 500, 625] rewards=[375, 500, 635]
+              ('Courses: Drift: Drift Track 1',)),  # bank differs on the wiki: infobox=[375, 500, 625] rewards=[375, 500, 635]
     EventData(4, 'The Perfect Shift', 'Drag', False, 1, (375, 500, 625), None, False,
               ('Cars: 2003 Mitsubishi Lancer ES', 'Courses: Drag: 14th and Vine Reverse')),
     EventData(5, 'Last Place Is A Bad Place To Be', 'Knockout', False, 1, (375, 500, 625), None, False,
-              ('Courses: Circuit: Olympic Square Reverse',)),  # TODO verify bank: infobox=[375, None, 625] rewards=[375, 500, 625]
+              ('Courses: Circuit: Olympic Square Reverse',)),  # bank differs on the wiki: infobox=[375, None, 625] rewards=[375, 500, 625]
     EventData(6, 'Rookie Tournament', 'Circuit', True, 2, (3750, 5000, 6250), 0, False,
               ('Performance Upgrades: Engine/Exhaust Packages: Level 1 (Street)', 'Performance Upgrades: Drivetrain Packages: Level 1 (Street)', 'Performance Upgrades: Tyre: Level 1 (Street)')),
     EventData(7, "TJ's Time Trial", 'Time Trial', False, 3, (100, 125, 150), None, True,
@@ -93,7 +93,7 @@ EVENTS: Tuple[EventData, ...] = (
     EventData(29, 'Scouting Report', 'Drag', False, 15, (225, 300, 375), None, False,
               ('Visual Upgrades: Window Tint: Level 2',)),
     EventData(30, 'Dead Calm', 'Circuit', True, 16, (225, 300, 375), 2, False,
-              ('Performance Upgrades: Drivetrain Packages: Level 2 (Pro)', 'Performance Upgrades: Engine/Exhaust Packages: Level 2 (Pro)', 'Performance Upgrades: Tyres: Level 2 (Pro)', 'Courses: Circuit: National Rail')),  # TODO verify bank: infobox=[3750, 5000, 6250] rewards=[225, 300, 375]
+              ('Performance Upgrades: Drivetrain Packages: Level 2 (Pro)', 'Performance Upgrades: Engine/Exhaust Packages: Level 2 (Pro)', 'Performance Upgrades: Tyres: Level 2 (Pro)', 'Courses: Circuit: National Rail')),  # bank differs on the wiki: infobox=[3750, 5000, 6250] rewards=[225, 300, 375]
     EventData(31, 'Outtasite!', 'Knockout', False, 17, (225, 300, 375), None, False,
               ('Visual Upgrades: Roof Scoops: Level 2',)),
     EventData(32, 'World of Hurt', 'Circuit', False, 17, (225, 300, 375), None, False,
@@ -209,7 +209,7 @@ EVENTS: Tuple[EventData, ...] = (
     EventData(87, 'Top 3', 'Drag', False, 49, (1500, 2000, 2500), None, False,
               ()),
     EventData(88, 'Three-Three-Three', 'Circuit', False, 49, (1200, 2000, 2500), None, False,
-              ()),  # TODO verify bank: infobox=[1500, 2000, 2500] rewards=[1200, 2000, 2500]
+              ()),  # bank differs on the wiki: infobox=[1500, 2000, 2500] rewards=[1200, 2000, 2500]
     EventData(89, 'Hoods Are Slippery When Wet', 'Drift', False, 49, (900, 1200, 1500), None, False,
               ('Visual Upgrades: Hoods: Level 3', 'Courses: Drift: Drift Track 7')),
     EventData(90, 'Special Preference', 'Knockout', False, 50, (1125, 1500, 1875), None, False,
@@ -237,7 +237,7 @@ EVENTS: Tuple[EventData, ...] = (
     EventData(101, "Eddie's Posse, Part 2", 'Sprint', True, 58, (6000, 8000, 10000), 4, False,
               ()),
     EventData(102, "Toughest 'n Roughest", 'Knockout', False, 59, (750, 1000, 1250), None, False,
-              ()),  # TODO verify bank: infobox=[750, None, 1250] rewards=[750, 1000, 1250]
+              ()),  # bank differs on the wiki: infobox=[750, None, 1250] rewards=[750, 1000, 1250]
     EventData(103, 'Enduro Street Circuit', 'Circuit', False, 59, (750, 1000, 1250), None, False,
               ()),
     EventData(104, 'Drift Devil', 'Drift', False, 60, (2250, 3000, 3750), None, False,
@@ -257,7 +257,7 @@ EVENTS: Tuple[EventData, ...] = (
     EventData(111, 'Wrath of Eddie', 'Sprint', False, 64, (7500, 10000, 12500), None, False,
               ()),
     EventData(112, 'Legend of the Street', 'Circuit', False, 65, (7500, 1000, 12500), None, False,
-              ()),  # TODO verify bank: infobox=[7500, 10000, 12500] rewards=[7500, 1000, 12500]
+              ()),  # bank differs on the wiki: infobox=[7500, 10000, 12500] rewards=[7500, 1000, 12500]
 )
 
 EVENTS_BY_NUMBER = {e.number: e for e in EVENTS}

@@ -21,7 +21,7 @@ for e in events:
     bank = tuple(rw[i] if rw[i] is not None else ib[i] for i in range(3))
     notes = []
     if e["bank_mismatch"] or None in ib:
-        notes.append(f"TODO verify bank: infobox={ib} rewards={rw}")
+        notes.append(f"bank differs on the wiki: infobox={ib} rewards={rw}")
     name = re.sub(r"<nowiki>(.*?)</nowiki>", r"\1", e["name"]).replace("‘", "'").replace("’", "'")
     unlocks = []
     for k, items in e["unlocks"].items():
@@ -44,7 +44,7 @@ The Archipelago world uses events 1-111; 0 and 112 are kept here for reference.
 
 Fields:
   bank                 Bank reward (Easy, Medium, Hard) on first win. Taken from the
-                       page's "Rewards" section; falls back to the infobox. Disagreements are marked TODO.
+                       page's "Rewards" section; falls back to the infobox. Disagreements are noted.
   reputation_required  Minimum reputation multiplier ("x N", shown as stars) needed to enter.
                        None = no requirement listed on the wiki.
   optional             Event can be declined in vanilla (time trials, #110).

@@ -8,7 +8,7 @@ Addresses are EE RAM addresses as PINE sees them (0x00000000-0x01FFFFFF). The cl
 reported by PCSX2 and only uses the table of a known version. A feature whose address is still None is
 skipped and reported once in the client log ("not mapped yet"), so the client can be tested piece by piece.
 
-Value formats are guesses and must be confirmed together with the address ("TODO" notes).
+Value formats are noted next to each address.
 """
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
@@ -60,7 +60,7 @@ class AddressMap:
     #: u8 – difficulty of the last race actually driven (0 Easy, 1 Medium, 2 Hard); not changed by just
     #: selecting a difficulty. The client reads it when an event switches to "won".
     #: NTSC-U: 0x004AC9E0 – 0 after an Easy win (#1), 1 after a Medium win (#2), stayed 1 while Hard was only
-    #: selected; 1 again after a Medium win of #4. TODO: confirm with a Hard (2) win.
+    #: selected; 1 again after a Medium win of #4.
     last_race_difficulty: Optional[int] = None
     #: i32 – number of the last won event (-1 before the first win). NTSC-U: 0x004ADA20 (-1 -> 1 -> 2).
     last_won_event: Optional[int] = None
@@ -120,7 +120,7 @@ class AddressMap:
     installed_performance: Optional[int] = None
     #: float – nitrous left in the current race.
     nitrous_amount: Optional[int] = None
-    #: float – a speed/power scale of the player car, used for the slowdown effect. TODO: find one.
+    #: float – a speed/power scale of the player car, used for the slowdown effect (not found; dormant).
     player_speed_scale: Optional[int] = None
     #: u8 – HUD visible flag.
     hud_visible: Optional[int] = None
@@ -128,7 +128,7 @@ class AddressMap:
     style_multiplier: Optional[int] = None
     #: u32 – paint colour id of the current car.
     paint_color: Optional[int] = None
-    #: u8 – write 1 to end the current race as lost (if such a flag exists). TODO.
+    #: u8 – write 1 to end the current race as lost (not found; dormant).
     force_race_loss: Optional[int] = None
 
     # ---------------------------------------------------------------- engine heat / blown engine (drag, Death Link)
@@ -304,5 +304,5 @@ def string_hash(text: str) -> int:
     return h
 
 
-#: Paint id used by the "Pink Paint Trap". TODO: fill in.
+#: Paint id used by the "Pink Paint Trap" (not found; dormant).
 PINK_PAINT_ID: Optional[int] = None
