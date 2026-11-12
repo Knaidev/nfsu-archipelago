@@ -51,6 +51,10 @@ You need your own copy of the game (NTSC-U `SLUS-20811`, as `.iso`). This projec
 Every step is explained in detail for first-time users in the
 [setup guide](worlds/nfsu/docs/setup_en.md).
 
+**Optional tracker:** `nfsu_poptracker.zip` from the same release is a pack for
+[PopTracker](https://github.com/black-sliver/PopTracker/releases). Put the `.zip` into PopTracker's `packs` folder,
+open it and click *AP*: it shows all 111 events (checks done, events you can enter), the time trials and your items.
+
 ## Development
 
 - `worlds/nfsu/` – the world (`items.py`, `locations.py`, `options.py`, `logic.py`, `rules.py`, `world.py`),
@@ -59,6 +63,8 @@ Every step is explained in detail for first-time users in the
 - `tools/build_apworld.py --archipelago <Archipelago source>` builds `build/nfsu.apworld`.
 - `tools/build_options_page.py --archipelago <Archipelago source>` builds `build/nfsu_options.html`, a stand-alone
   page to create a player YAML (generated from `options.py`; template `tools/options_page.html`).
+- `tools/build_poptracker.py --archipelago <Archipelago source>` builds `build/nfsu_poptracker.zip`, the
+  PopTracker pack (generated from the world's data; drawn panels only, no game assets).
 - `tools/pine_memscan.py` – RAM snapshots / search over PINE; `tools/research/` – data scrapers, MIPS disassembler.
 
 Tests run with Archipelago's test runner from an Archipelago source checkout that contains `worlds/nfsu`:
