@@ -61,6 +61,12 @@ BANK_ITEMS: Dict[str, int] = {
     "Bank Bonus (5000)": 5000,
     "Bank Bonus (10000)": 10000,
 }
+#: Placed on the player's own start events by the Early Bank Bonuses option; never part of the random filler.
+EARLY_BANK_ITEM = "Bank Bonus (2000)"
+#: Bank every Bank item pays (before the Bank Multiplier), for the client.
+#: The only Bank item of the random filler when the Large Bank Bonuses option is on.
+LARGE_BANK_ITEM = "Bank Bonus (7000)"
+BANK_VALUES: Dict[str, int] = {**BANK_ITEMS, EARLY_BANK_ITEM: 2000, LARGE_BANK_ITEM: 7000}
 
 
 def car_item_name(car: str) -> str:
@@ -92,6 +98,8 @@ def _build_table() -> Dict[str, ItemData]:
         add(trap, IC.trap, "Traps")
     for name in PACK_ITEM_NAMES:     # 0.2: events as items (packs.py)
         add(name, IC.progression, "Event Packs")
+    add(EARLY_BANK_ITEM, IC.filler, "Bank")     # 0.4
+    add(LARGE_BANK_ITEM, IC.filler, "Bank")     # 0.4
     return table
 
 
@@ -161,6 +169,11 @@ def min_bank_slots(world: "NFSUWorld") -> int:
     return -(-pool_bank_target(world) // max(BANK_ITEMS.values()))
 
 
+def large_bank(world: "NFSUWorld") -> bool:
+    """Large Bank Bonuses only apply when races pay no Bank."""
+    return bool(world.options.large_bank_bonuses) and not world.options.vanilla_bank_rewards
+
+
 def filler_pool(world: "NFSUWorld", slots: int) -> List[str]:
     """Bank Bonus items and traps for the remaining slots, guaranteeing pool_bank_target."""
     rng = world.random
@@ -179,6 +192,13 @@ def filler_pool(world: "NFSUWorld", slots: int) -> List[str]:
         from Options import OptionError
         raise OptionError(f"{world.player_name}: not enough filler slots to place {target} Bank. "
                           f"Raise bank_multiplier or starting_bank, or turn vanilla_bank_rewards on.")
+
+    if large_bank(world):
+        pool = [LARGE_BANK_ITEM] * n_bank
+        if n_traps:
+            trap_names = list(weights)
+            pool += rng.choices(trap_names, weights=[weights[t] for t in trap_names], k=n_traps)
+        return pool
 
     # Start with small/medium bonuses, then upgrade until the target is reached.
     bank_idx = [rng.randrange(0, 3) for _ in range(n_bank)]

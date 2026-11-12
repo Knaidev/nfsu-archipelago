@@ -3,7 +3,7 @@ from BaseClasses import CollectionState
 
 from . import NFSUTestBase
 from ..data.parts import PERFORMANCE
-from ..items import BANK_ITEMS, FINALE_ITEM, KEY_ITEM, REQUIRED_BANK, TIME_TRIAL_WON
+from ..items import BANK_VALUES, FINALE_ITEM, KEY_ITEM, REQUIRED_BANK, TIME_TRIAL_WON
 from ..locations import (CHECK_EVENTS, CHOICE_EVENTS, GOAL_LOCATION, LOCATION_NAME_TO_ID, base_check_names,
                          tier_of)
 from ..logic import max_reputation, starting_reputation
@@ -140,7 +140,7 @@ class TestBankWithoutVanillaRewards(NFSUTestBase):
 
     def test_enough_bank(self):
         world = self.multiworld.worlds[self.player]
-        base = sum(BANK_ITEMS.get(i.name, 0) for i in self.multiworld.itempool if i.player == self.player)
+        base = sum(BANK_VALUES.get(i.name, 0) for i in self.multiworld.itempool if i.player == self.player)
         effective = base * world.options.bank_multiplier.value // 100 + world.options.starting_bank.value
         self.assertGreaterEqual(effective, REQUIRED_BANK)
 

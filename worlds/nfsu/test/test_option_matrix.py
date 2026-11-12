@@ -45,3 +45,43 @@ class TestNoTimeTrialsRequired(NFSUTestBase):
 
 class TestRandomStarterNoVanillaBank(NFSUTestBase):
     options = {"starting_car": "random_starter", "vanilla_bank_rewards": False}
+
+    def test_no_early_bank_by_default(self):
+        from ..items import EARLY_BANK_ITEM
+        self.assertIsNone(self.multiworld.local_early_items[self.player].get(EARLY_BANK_ITEM), "default 0")
+        pool = [i.name for i in self.multiworld.itempool if i.player == self.player]
+        self.assertEqual(pool.count(EARLY_BANK_ITEM), 0)
+
+
+class TestLargeBankBonuses(NFSUTestBase):
+    options = {"vanilla_bank_rewards": False, "large_bank_bonuses": True, "early_bank_bonuses": 2}
+
+    def test_all_pool_bank_is_7000(self):
+        from ..items import BANK_VALUES, EARLY_BANK_ITEM, LARGE_BANK_ITEM
+        bank = [i.name for i in self.multiworld.itempool if i.player == self.player and i.name in BANK_VALUES]
+        self.assertEqual(set(bank), {LARGE_BANK_ITEM, EARLY_BANK_ITEM})
+        self.assertEqual(bank.count(EARLY_BANK_ITEM), 2, "early bonuses stay small")
+
+
+class TestLargeBankIgnoredWithVanillaBank(NFSUTestBase):
+    options = {"vanilla_bank_rewards": True, "large_bank_bonuses": True}
+
+    def test_option_is_ignored(self):
+        from ..items import LARGE_BANK_ITEM
+        self.assertNotIn(LARGE_BANK_ITEM, [i.name for i in self.multiworld.itempool if i.player == self.player])
+
+
+class TestTwoEarlyBankBonuses(NFSUTestBase):
+    options = {"vanilla_bank_rewards": False, "early_bank_bonuses": 2}
+
+    def test_two_are_placed_early(self):
+        from ..items import EARLY_BANK_ITEM
+        self.assertEqual(self.multiworld.local_early_items[self.player].get(EARLY_BANK_ITEM), 2)
+
+
+class TestNoEarlyBankWithVanillaBank(NFSUTestBase):
+    options = {"vanilla_bank_rewards": True, "early_bank_bonuses": 2}
+
+    def test_option_is_ignored(self):
+        from ..items import EARLY_BANK_ITEM
+        self.assertNotIn(EARLY_BANK_ITEM, [i.name for i in self.multiworld.itempool if i.player == self.player])

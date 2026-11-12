@@ -95,7 +95,8 @@ class NFSUWorld(World):
         # (solo seeds failed 9 of 30 times with 2 random starting packs).
         # With star gates, Tier 1 is all there is until 2 stars: more room for packs and visual items.
         needed = ((len(PERFORMANCE) if opts.early_level_1_parts else 0) + self.SPHERE_ONE_MARGIN
-                  + (self.SPHERE_ONE_MARGIN if opts.star_gates else 0))
+                  + (self.SPHERE_ONE_MARGIN if opts.star_gates else 0)
+                  + self._early_bank_items())
         extra = [n for n in easy if n not in self.starting_packs]
         while self._sphere_one_checks() < needed and extra:
             self.starting_packs.add(extra.pop(0))
@@ -121,6 +122,9 @@ class NFSUWorld(World):
     def get_filler_item_name(self) -> str:
         return items.get_filler_item_name(self)
 
+    def _early_bank_items(self) -> int:
+        return 0 if self.options.vanilla_bank_rewards else self.options.early_bank_bonuses.value
+
     def create_items(self) -> None:
         pool_names: List[str] = items.progression_pool(self)
         if self.starting_car is not None:
@@ -129,6 +133,12 @@ class NFSUWorld(World):
         for name in sorted(self.starting_packs, key=self.pack_items.index):
             self.multiworld.push_precollected(self.create_item(name))
 
+        # Early Bank Bonuses: extra 2,000 Bank items on the own start events (races pay nothing in that mode
+        # and the first car leaves the Bank at 0).
+        early_bank = self._early_bank_items()
+        pool_names += [items.EARLY_BANK_ITEM] * early_bank
+        if early_bank:
+            self.multiworld.local_early_items[self.player][items.EARLY_BANK_ITEM] = early_bank
         slots = locations.check_count(self) - len(pool_names)
         if slots < 0:
             from Options import OptionError

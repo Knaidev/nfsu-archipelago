@@ -13,8 +13,8 @@ TRAPS = ("Nitro Drain Trap", "Grip Loss Trap", "Power Cut Trap", "Bank Tax Trap"
 # ---------------------------------------------------------------- Goal and scope
 class Goal(Choice):
     """What you need to do to finish.
-    finale: Win #111 "Wrath of Eddie". It unlocks once you have the required time trials,
-            the "Finale: #111" item and "Samantha's Big Tease".
+    finale: Win the final event, "Wrath of Eddie" (the game numbers it #112). It unlocks once you have the
+            required time trials, the finale item ("Finale: #111") and "Samantha's Big Tease".
     race_count: Win a set number of events (see Races For Goal)."""
     display_name = "Goal"
     option_finale = 0
@@ -31,11 +31,11 @@ class RacesForGoal(Range):
 
 
 class TimeTrialsRequired(Range):
-    """How many of the 7 time trials must be won (any difficulty) before #111 unlocks."""
+    """How many of the 7 time trials must be won (any difficulty) before the finale unlocks."""
     display_name = "Time Trials Required"
     range_start = 0
     range_end = 7
-    default = 7
+    default = 0
 
 
 # The checks of an event are its vanilla rewards (shown in the game's reward popup) – or one "Victory" check for
@@ -109,7 +109,7 @@ class EarlyLevel1Parts(DefaultOnToggle):
 
 
 class LocalKeyItems(Toggle):
-    """Keep "Finale: #111" and "Samantha's Big Tease" in your own game."""
+    """Keep the finale item ("Finale: #111") and "Samantha's Big Tease" in your own game."""
     display_name = "Local Key Items"
 
 
@@ -160,8 +160,24 @@ class BankMultiplier(Range):
 
 class VanillaBankRewards(DefaultOnToggle):
     """Keep paying the game's normal Bank for winning events. Off: races pay no Bank (the client switches the
-    payout off while it runs), all Bank comes from Bank items."""
+    payout off while it runs), all Bank comes from Bank items. Note: you then start with 0 Bank (plus Starting
+    Bank) and the first Bank item can come late – see Large Bank Bonuses and Early Bank Bonuses."""
     display_name = "Vanilla Bank Rewards"
+
+
+class LargeBankBonuses(Toggle):
+    """Only with Vanilla Bank Rewards off: every Bank Bonus item in the pool is a "Bank Bonus (7000)"
+    (7,000 Bank) instead of a mix of 500 to 10,000. Recommended when races pay no Bank."""
+    display_name = "Large Bank Bonuses"
+
+
+class EarlyBankBonuses(Range):
+    """Only with Vanilla Bank Rewards off: this many extra "Bank Bonus (2000)" items (2,000 Bank each) are
+    placed on your own starting events, so you have some money for the first parts. 0 = no guarantee."""
+    display_name = "Early Bank Bonuses"
+    range_start = 0
+    range_end = 2
+    default = 0
 
 
 
@@ -238,6 +254,8 @@ class NFSUOptions(PerGameCommonOptions):
     starting_bank: StartingBank
     bank_multiplier: BankMultiplier
     vanilla_bank_rewards: VanillaBankRewards
+    large_bank_bonuses: LargeBankBonuses
+    early_bank_bonuses: EarlyBankBonuses
     death_link: NFSUDeathLink
     death_link_trigger: DeathLinkTrigger
     death_link_amnesty: DeathLinkAmnesty
@@ -265,32 +283,21 @@ OPTION_GROUPS = [
     OptionGroup("Logic", [EventPacks, StartingEventPacks, LogicStrictness, StarGates, StarGateScale,
                           EarlyLevel1Parts, LocalKeyItems]),
     OptionGroup("Items and Economy", [CarsAsItems, StartingCar, StartingBank, BankMultiplier,
-                                      VanillaBankRewards]),
+                                      VanillaBankRewards, LargeBankBonuses,
+                                      EarlyBankBonuses]),
     OptionGroup("Death Link", [NFSUDeathLink, DeathLinkTrigger, DeathLinkAmnesty], start_collapsed=True),
 ]
 
 # Webhost presets (OptionSet/OptionCounter options are not allowed here).
 PRESETS = {
-    "Relaxed": {
-        "logic_strictness": "loose",
-        "star_gate_scale": 75,
-        "bank_multiplier": 200,
-        "starting_bank": 5000,
-        "starting_event_packs": 4,
-        "death_link": False,
-    },
+    # The one preset of the options page: a fair run that can be played through cleanly. It spells out the
+    # defaults that matter, so the page shows them even if a default changes later.
     "Standard": {
-        "logic_strictness": "normal",
-        "bank_multiplier": 100,
-        "event_packs": True,
-        "starting_event_packs": 2,
+        "goal": "finale",
+        "time_trials_required": 0,
+        "starting_car": "vanilla",
+        "vanilla_bank_rewards": True,
+        "early_bank_bonuses": 0,
         "death_link": False,
-    },
-    "Hardcore": {
-        "logic_strictness": "strict",
-        "starting_car": "random_starter",
-        "vanilla_bank_rewards": False,
-        "star_gates": True,
-        "starting_event_packs": 1,
     },
 }
