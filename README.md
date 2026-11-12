@@ -5,8 +5,7 @@
 An [Archipelago](https://archipelago.gg) world and PCSX2 client for **Need for Speed: Underground** (PS2,
 NTSC-U `SLUS-20811`). Race rewards become checks, and parts, cars and Bank come from the multiworld.
 
-**Status: Alpha 0.3.** Everything listed below was tested in game, but a full run to the goal has not been
-played yet. Expect bugs and please report them in the issues.
+**Version 0.4.** Everything listed below was tested in game. Please report bugs in the issues.
 
 ## Features
 
@@ -17,11 +16,17 @@ played yet. Expect bugs and please report them in the issues.
 - **Events as items:** #1–#5 are open from the start, all other events come in "Event Packs" whose contents
   the seed decides. Tournaments and the finale need reputation stars from received visual parts; optional
   star gates also lock whole tiers. The client fills the race map's 12 slots (`/nfsu events`, `/nfsu pin`).
-- **Goal:** win #111 "Wrath of Eddie" (needs time trials, the "Finale: #111" item and "Samantha's Big Tease"),
-  or win a set number of events.
-- **Death Link:** losing a race sends a death; a received death blows your engine ("Blown Engine").
+- **Tournaments** are the hard part of a run: several races in a row against strong opponents. Buy and install
+  every upgrade you have received before you enter one.
+- **Goal:** win the finale "Wrath of Eddie" (needs the "Finale: #111" item, "Samantha's Big Tease", 5 stars and,
+  if you set it, a number of time trials), or win a set number of events.
+- **Bank:** races pay their normal Bank, or – option *Vanilla Bank Rewards* off – all Bank comes from Bank
+  items (with *Large Bank Bonuses* and *Early Bank Bonuses* to tune it).
+- **Death Link** (optional): losing a race sends a death; a received death blows your engine ("Blown Engine").
   Tournaments count as a whole: a lost round sends nothing, losing or leaving the tournament does.
 - **First car:** with a random start car any car can be the first one; the client makes sure you can buy it.
+- **Crash-safe:** parts, cars, events and checks come back from the server, and the Bank count lives in your
+  save, so a crash or an older save loses nothing.
 
 Details: [game page](worlds/nfsu/docs/en_Need%20for%20Speed%20Underground.md) ·
 [setup guide](worlds/nfsu/docs/setup_en.md).
@@ -36,7 +41,7 @@ You need your own copy of the game (NTSC-U `SLUS-20811`, as `.iso`). This projec
    **`nfsu_options.html`**. Double-click `nfsu.apworld` to install it (close the Archipelago Launcher first;
    a newer version replaces the old one).
 3. **Create your YAML:** double-click `nfsu_options.html` – it opens in your browser (works offline). Enter your
-   player name, pick a preset or options and click *Download YAML*.
+   player name, keep the *Standard* preset or change options and click *Download YAML*.
 4. **Enable PINE in PCSX2** (once): *Tools → Show Advanced Settings*, then *Settings → Advanced → PINE Settings*:
    tick *Enable*, slot **28011**.
 5. Generate the game in the Archipelago Launcher (*Generate*), host it (upload the `.zip` on
