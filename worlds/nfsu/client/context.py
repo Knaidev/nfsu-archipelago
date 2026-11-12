@@ -152,6 +152,8 @@ class NFSUContext(CommonContext):
         #: /deathlink or --death_link: overrides the slot's Death Link option (None = use the slot option).
         self.death_link_override: Optional[bool] = None
         self.goal_sent = False
+        #: Won events last written to the server's data storage (for trackers such as PopTracker).
+        self.published_won: Optional[List[int]] = None
         self.last_wrong_game: Optional[str] = None
         self.waiting_logged = False
 
@@ -176,6 +178,7 @@ class NFSUContext(CommonContext):
             self.sync = GameSync(self.game_interface, settings, counter_store=store)
             self.sync.describe = self.describe_location
             self.goal_sent = False
+            self.published_won = None
             from Utils import async_start
             async_start(self.update_death_link(settings.death_link))
             # Learn what lies on every own check, for the in-game reward popups (no hints are created).
@@ -238,6 +241,20 @@ class NFSUContext(CommonContext):
         return [ITEM_ID_TO_NAME.get(item.item, "") for item in self.items_received]
 
 
+def won_events_key(team: int, slot: int) -> str:
+    return f"NFSU_won_{team}_{slot}"
+
+
+async def publish_won_events(ctx: NFSUContext) -> None:
+    """Writes the numbers of all won events to data storage when they changed. Time trials, #110 and the
+    finale have no checks, so this is the only way a tracker can see them."""
+    won = sorted(ctx.sync.results)
+    if won != ctx.published_won:
+        ctx.published_won = won
+        await ctx.send_msgs([{"cmd": "Set", "key": won_events_key(ctx.team, ctx.slot), "default": [],
+                              "want_reply": False, "operations": [{"operation": "replace", "value": won}]}])
+
+
 async def pcsx2_loop(ctx: NFSUContext) -> None:
     last_attempt = 0.0
     while not ctx.exit_event.is_set():
@@ -268,6 +285,7 @@ async def pcsx2_loop(ctx: NFSUContext) -> None:
                 logger.info(msg)
             if result.new_checks:
                 await ctx.check_locations(result.new_checks)
+            await publish_won_events(ctx)
             if result.send_death and ctx.sync.s.death_link:
                 await ctx.send_death(f"{ctx.player_names[ctx.slot]} {result.send_death}")
             if result.goal and not ctx.goal_sent:
