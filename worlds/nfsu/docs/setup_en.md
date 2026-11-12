@@ -42,12 +42,9 @@ You can switch *Show Advanced Settings* off again afterwards – PINE stays enab
 from the newest release and double-click it – it opens in your web browser and works offline, nothing is uploaded.
 
 1. Enter your **player name** (this is your slot name for connecting later).
-2. Pick a **preset** (Relaxed / Standard / Hardcore) or set the options yourself. Options that differ from the
-   defaults are marked; the **?** buttons explain each option.
+2. Keep the **Standard** preset (a fair run: vanilla Bank, all starter cars, no Death Link) or change the
+   options you like. Options that differ from the defaults are marked; the **?** buttons explain each option.
 3. Click **Download YAML**.
-
-Alternative: in the Archipelago Launcher choose **Generate Template Options** and edit
-`Need for Speed Underground.yaml` in a text editor.
 
 ## 4. Generating and hosting a game
 
@@ -74,8 +71,12 @@ If someone else hosts the multiworld, send them your YAML and skip to step 5.
 
 After the prologue you choose your first car. While you choose it, the client shows 500,000 Bank so any car (also
 an expensive random start car) can be bought; after the purchase the Bank is set to what the game's 10,000 would have
-left (0 if the car costs more). Starting Bank and Bank items are paid after that (so a new career does not lose
-them).
+left (0 if the car costs more). With *Vanilla Bank Rewards* off the prologue pays nothing: the Bank shows 0, the
+game still sells you the car, and the Bank is 0 afterwards. Starting Bank and Bank items are paid after the
+purchase (so a new career does not lose them).
+
+**Tournaments:** buy and install every upgrade you have received before you enter a tournament – they are several
+races in a row against strong opponents and are usually not winnable with less.
 
 The client patches the game in memory while it runs (event availability, shop, car lot). When you close the
 client, the game goes back to its normal unlock rules.
@@ -91,8 +92,9 @@ client, the game goes back to its normal unlock rules.
 
 ## Known limitations
 
-- The count of received items is stored on the Archipelago server, not in your save. If you load an older save
-  or savestate, Bank that was already paid out is not paid again.
+- The client keeps its count of paid-out Bank items inside your save. If the game crashes before it saved, or
+  you load an older save or savestate, the missing Bank items are paid again. Wins of time trials and of #110
+  have no checks: after a crash before saving they have to be driven again.
 - Only one program can use PINE at a time; close other PINE tools while the client runs.
 - The client changes a few game routines in memory while it runs and restores them when you close it. A
   **savestate** made while the client runs contains these changes: if you load it without the client, events,
