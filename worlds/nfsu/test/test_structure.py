@@ -132,6 +132,38 @@ class TestCars(NFSUTestBase):
                          {f"Car: {c.name}" for c in CARS} - start, "all other cars are items")
 
 
+class TestCarsShitbox(NFSUTestBase):
+    options = {"starting_car": "random_shitbox"}
+
+    def test_random_shitbox(self):
+        from ..data.cars import CARS, SHITBOX_CARS
+        world = self.multiworld.worlds[self.player]
+        self.assertIn(world.starting_car, SHITBOX_CARS)
+        own = {i.name for i in self.multiworld.itempool if i.player == self.player}
+        start = {i.name for i in self.multiworld.precollected_items[self.player] if i.name.startswith("Car: ")}
+        self.assertEqual(start, {f"Car: {world.starting_car}"})
+        self.assertEqual({n for n in own if n.startswith("Car: ")},
+                         {f"Car: {c.name}" for c in CARS} - start, "all other cars are items")
+
+    def test_shitbox_cars_are_the_five_weakest(self):
+        from ..data.cars import CARS, SHITBOX_CARS
+        names = {c.name for c in CARS}
+        self.assertEqual(len(set(SHITBOX_CARS)), 5)
+        self.assertTrue(set(SHITBOX_CARS) <= names)
+        weakest = sorted(CARS, key=lambda c: sum(c.rating))[:4]
+        self.assertTrue({c.name for c in weakest} <= set(SHITBOX_CARS))
+
+    def test_every_shitbox_car_can_be_the_start_car(self):
+        from ..data.cars import SHITBOX_CARS
+        from ..items import pick_starting_car
+        world = self.multiworld.worlds[self.player]
+        seen = set()
+        for seed in range(200):
+            world.random.seed(seed)
+            seen.add(pick_starting_car(world))
+        self.assertEqual(seen, set(SHITBOX_CARS))
+
+
 class TestCarsVanilla(NFSUTestBase):
     def test_starters_are_no_items(self):
         from ..data.cars import STARTER_CARS

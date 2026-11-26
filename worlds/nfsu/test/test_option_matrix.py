@@ -35,6 +35,10 @@ class TestRandomCar(NFSUTestBase):
     options = {"starting_car": "random_car", "cars_as_items": True}
 
 
+class TestRandomShitboxNoVanillaBank(NFSUTestBase):
+    options = {"starting_car": "random_shitbox", "vanilla_bank_rewards": False, "large_bank_bonuses": True}
+
+
 class TestRaceCountNoCars(NFSUTestBase):
     options = {"goal": "race_count", "races_for_goal": 100, "cars_as_items": False}
 

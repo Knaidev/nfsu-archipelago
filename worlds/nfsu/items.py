@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional
 
 from BaseClasses import Item, ItemClassification as IC
 
-from .data.cars import CARS, STARTER_CARS, UNLOCKABLE_CARS
+from .data.cars import CARS, SHITBOX_CARS, STARTER_CARS, UNLOCKABLE_CARS
 from .data.events import EVENTS_BY_NUMBER, TIME_TRIALS
 from .data.parts import PERFORMANCE, UNIQUE_REWARDS, VISUAL
 from .options import TRAPS, option_value
@@ -231,10 +231,13 @@ def get_filler_item_name(world: "NFSUWorld") -> str:
 
 
 def pick_starting_car(world: "NFSUWorld") -> Optional[str]:
-    """The start car for random_starter / random_car (None for vanilla, or when cars are no items)."""
+    """The start car for random_starter / random_shitbox / random_car (None for vanilla, or when cars are no
+    items)."""
     opts = world.options
     if opts.starting_car == opts.starting_car.option_vanilla or not opts.cars_as_items:
         return None
     if opts.starting_car == opts.starting_car.option_random_starter:
         return world.random.choice(STARTER_CARS)
+    if opts.starting_car == opts.starting_car.option_random_shitbox:
+        return world.random.choice(SHITBOX_CARS)
     return world.random.choice(CARS).name

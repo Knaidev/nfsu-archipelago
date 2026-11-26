@@ -40,3 +40,8 @@ CARS: Tuple[CarData, ...] = (
 
 STARTER_CARS = tuple(c.name for c in CARS if c.unlock_event is None)
 UNLOCKABLE_CARS = tuple(c for c in CARS if c.unlock_event is not None)
+
+# The five weakest cars of the game (Starting Car "random_shitbox"): the last five of the "Base Level Performance
+# Rank" on nfs.onl (https://nfs.onl/?site=vehicles&mode=freerun), and the five lowest stock ratings above
+# (acceleration + top speed + handling; the Civic Si ties with the Neon on fifth place).
+SHITBOX_CARS = ("Volkswagen Golf GTI", "Mitsubishi Lancer ES", "Ford Focus ZX3", "Honda Civic Si", "Peugeot 206")
