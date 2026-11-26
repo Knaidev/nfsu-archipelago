@@ -61,8 +61,9 @@ Alternatively, the goal can be to win a set number of events.
 - Progressive performance parts (9 categories × 3 levels)
 - Progressive visual parts per category (bumpers, skirts, spoiler, hood, roof scoop, rims, neon, muffler tip,
   window tint, lights, paint, decals – Level 2, then 3)
-- Cars: the 15 cars that normally unlock through events; with **Starting Car** random_starter / random_car you
-  start with one random car and all others are items
+- Cars: the 15 cars that normally unlock through events; with **Starting Car** random_starter / random_shitbox /
+  random_car you start with one random car and all others are items. random_shitbox picks one of the five
+  weakest cars (Volkswagen Golf GTI, Mitsubishi Lancer ES, Ford Focus ZX3, Honda Civic Si, Peugeot 206)
 - Event Packs and one item per time trial (see above)
 - Bank bonuses. By default races also pay their normal Bank. With *Vanilla Bank Rewards* off, races pay nothing
   and all Bank comes from these items: you start with 0 Bank (plus *Starting Bank*), and the options *Large

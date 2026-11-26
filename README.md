@@ -26,7 +26,8 @@ NTSC-U `SLUS-20811`). Race rewards become checks, and parts, cars and Bank come 
   items (with *Large Bank Bonuses* and *Early Bank Bonuses* to tune it).
 - **Death Link** (optional): losing a race sends a death; a received death blows your engine ("Blown Engine").
   Tournaments count as a whole: a lost round sends nothing, losing or leaving the tournament does.
-- **First car:** with a random start car any car can be the first one; the client makes sure you can buy it.
+- **First car:** with a random start car any car can be the first one – or, with *random_shitbox*, one of the five
+  weakest cars; the client makes sure you can buy it.
 - **Crash-safe:** parts, cars, events and checks come back from the server, and the Bank count lives in your
   save, so a crash or an older save loses nothing.
 
