@@ -2,7 +2,7 @@
 
 > **AI notice: the code of this project is not handwritten.** It was written by AI (Claude by Anthropic).
 >
-> **Version 0.4.1.** Race wins, the reward popups, Event Packs and the race map, the shop, cars, Bank and Death Link
+> **Version 0.4.2.** Race wins, the reward popups, Event Packs and the race map, the shop, cars, Bank and Death Link
 > work with the PCSX2 client.
 
 ## What does randomization do to this game?
@@ -13,8 +13,10 @@ Events without a reward have one "Victory" check. The difficulty you race on doe
 A few events show one popup more than they have checks (the game also unlocks a track there); that popup says
 "No Archipelago item here.".
 
-Events that let you **choose** a reward (the seven time trials and #110) have no checks – you keep their
-original unique part. Time trials still count for the finale.
+Events that let you **choose** a reward keep it: the unique part you pick after a time trial and the Wide Body
+Kit of #110 stay the game's own, and no Archipelago item is shown in that choice. Each time trial has one
+"Victory" check instead; the item you found there is listed in the Bank popup (if the game shows one) and in the
+client. #110 has no check. Time trials also count for the finale.
 
 Performance parts, visual parts and cars no longer unlock by winning events. They come from the multiworld
 instead: each item opens the next level of its category in the shop (or a car at the car lot). You still buy
@@ -26,8 +28,8 @@ pack can hold e.g. #8, #19, #43, #44 and #56. You start with a few packs (option
 client lists every new pack in its log. With *Event Packs* off, all events are open from the start.
 
 **Time trials are items, too.** The seven time trials (#7, #15, #26, #47, #68, #77, #96) are not in any Event
-Pack: each one opens with its own item ("Time Trial: #7 TJ's Time Trial" and so on). They have no checks;
-winning them only counts for the goal (*Time Trials Required*) and gives you the game's unique parts. With
+Pack: each one opens with its own item ("Time Trial: #7 TJ's Time Trial" and so on). Winning one sends its
+"Victory" check, counts for the goal (*Time Trials Required*) and gives you the game's unique part. With
 *Event Packs* off, they are open from the start.
 
 **Reputation stars** come from the visual part items you received (full stars, rounded down, using the game's

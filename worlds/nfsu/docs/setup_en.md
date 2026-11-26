@@ -2,7 +2,7 @@
 
 > **AI notice: the code of this project is not handwritten.** It was written by AI (Claude by Anthropic).
 >
-> **Version 0.4.1.** Please report bugs on the project's GitHub page.
+> **Version 0.4.2.** Please report bugs on the project's GitHub page.
 
 ## Required software
 
@@ -93,8 +93,9 @@ client, the game goes back to its normal unlock rules.
 ## Known limitations
 
 - The client keeps its count of paid-out Bank items inside your save. If the game crashes before it saved, or
-  you load an older save or savestate, the missing Bank items are paid again. Wins of time trials and of #110
-  have no checks: after a crash before saving they have to be driven again.
+  you load an older save or savestate, the missing Bank items are paid again. A time trial counts for the goal
+  only once its win is in your save, and #110 has no check: after a crash before saving, drive them again (a
+  time trial's check is already sent).
 - Only one program can use PINE at a time; close other PINE tools while the client runs.
 - The client changes a few game routines in memory while it runs and restores them when you close it. A
   **savestate** made while the client runs contains these changes: if you load it without the client, events,

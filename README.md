@@ -5,12 +5,13 @@
 An [Archipelago](https://archipelago.gg) world and PCSX2 client for **Need for Speed: Underground** (PS2,
 NTSC-U `SLUS-20811`). Race rewards become checks, and parts, cars and Bank come from the multiworld.
 
-**Version 0.4.1.** Everything listed below was tested in game. Please report bugs in the issues.
+**Version 0.4.2.** Everything listed below was tested in game. Please report bugs in the issues.
 
 ## Features
 
 - **Checks** are the game's own race rewards (one per unlock in the "Race Victory Reward" popup, "Victory" for
-  events without a reward). The popup shows the Archipelago item you found.
+  events without a reward). The popup shows the Archipelago item you found. Each time trial has one "Victory"
+  check; the unique part you pick there stays the game's own.
 - **Items:** progressive performance parts, progressive visual parts per category, cars, Event Packs, Bank bonuses.
   The client patches the shop and the car lot so that only received parts and cars can be bought.
 - **Events as items:** #1–#5 are open from the start, all other events come in "Event Packs" whose contents
@@ -59,7 +60,8 @@ open it and click *AP*: it shows all 111 events (checks done, events you can ent
 ## Known limitations
 
 - Only the PS2 version, NTSC-U (`SLUS-20811`), is supported.
-- Time trials, the choice event #110 and the finale have no checks; they only count for the goal.
+- The choice event #110 and the finale have no checks. A time trial's found item is shown in its Bank popup
+  only (never in the unique part choice), otherwise just in the client.
 - A few events show one reward popup more than they have checks (the game also unlocks a track there); that
   popup says "No Archipelago item here.".
 - Death Link for a lost tournament is sent when you return to the race map; "Restart Tournament" on the results
