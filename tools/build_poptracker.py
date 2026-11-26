@@ -6,7 +6,8 @@ Everything in the pack is generated from the world's own data (events, checks, i
 the apworld. The images are plain drawn panels (Pillow); the pack contains no game assets.
 
 Tabs: "Events" (all 111 events as a grid; a field is cleared when all its checks are sent), "Time Trials" (the
-events without checks, which the NFSU client reports through Archipelago's data storage) and "Items".
+seven time trials with their Victory checks, plus #110 and the finale, which have no checks: the NFSU client
+reports those through Archipelago's data storage) and "Items".
 """
 import argparse
 import io
@@ -125,13 +126,14 @@ def main() -> None:
     from worlds.nfsu.data.parts import PERFORMANCE
     from worlds.nfsu.items import (FINALE_ITEM, ITEM_NAME_TO_ID, KEY_ITEM, TIME_TRIAL_ITEMS, VISUAL_ITEM_LEVELS,
                                    car_item_name, progressive_name)
-    from worlds.nfsu.locations import CHOICE_EVENTS, EVENT_CHECK_IDS, LOCATION_NAME_TO_ID
+    from worlds.nfsu.locations import EVENT_CHECK_IDS, LOCATION_NAME_TO_ID
     from worlds.nfsu.packs import PACK_ITEM_NAMES
 
     manifest = json.loads((ROOT / "worlds" / "nfsu" / "archipelago.json").read_text(encoding="utf-8"))
     location_names = {v: k for k, v in LOCATION_NAME_TO_ID.items()}
     events = [e for e in EVENTS if 1 <= e.number <= GOAL_EVENT]
-    no_checks = [e for e in events if not EVENT_CHECK_IDS.get(e.number)]   # time trials, #110, the finale
+    # Second map: the time trials (Victory checks) and the events without checks (#110, the finale).
+    special = [e for e in events if e.race_type == "Time Trial" or not EVENT_CHECK_IDS.get(e.number)]
     files = {}
 
     # ------------------------------------------------------------------ maps
@@ -142,13 +144,13 @@ def main() -> None:
             lines.append("tourney")
         if e.reputation_required:
             lines.append("%d star%s" % (e.reputation_required, "" if e.reputation_required == 1 else "s"))
-        cells.append((lines, e.number == GOAL_EVENT or e.number in CHOICE_EVENTS))
+        cells.append((lines, not EVENT_CHECK_IDS.get(e.number)))
     files["images/maps/events.png"], event_xy = grid_map(
         "UNDERGROUND MODE  –  EVENTS", cells, COLS, CELL_W, CELL_H)
     tt_cells = [(["#%d" % e.number] + wrap(e.name, 22)[:2] + [e.race_type], e.number == GOAL_EVENT)
-                for e in no_checks]
+                for e in special]
     files["images/maps/special.png"], special_xy = grid_map(
-        "TIME TRIALS AND FINALE  –  NO CHECKS, WON IN GAME", tt_cells, 3, 4 * CELL_W, CELL_H + 14)
+        "TIME TRIALS, #110 AND FINALE", tt_cells, 3, 4 * CELL_W, CELL_H + 14)
     files["maps/maps.json"] = json.dumps([
         {"name": "events", "location_size": LOCATION_SIZE, "location_border_thickness": 2,
          "img": "images/maps/events.png"},
@@ -158,7 +160,7 @@ def main() -> None:
 
     # ------------------------------------------------------------------ locations
     locations, check_codes, win_codes = [], {}, {}
-    special_index = {e.number: i for i, e in enumerate(no_checks)}
+    special_index = {e.number: i for i, e in enumerate(special)}
     for i, e in enumerate(events):
         name = clean("#%d %s" % (e.number, e.name))
         ids = EVENT_CHECK_IDS.get(e.number, ())
@@ -421,8 +423,9 @@ click "AP" to connect with the same server address and slot name as the NFSU cli
 
 Events tab: one field per event. A field is cleared when all checks of the event are sent; an event you cannot
 enter yet (its Event Pack is missing) is shown as not accessible.
-Time Trials tab: the events without checks (time trials, the choice event and the finale). They are cleared
-when the NFSU client (0.4 or newer) reports them as won. A time trial counts as open once you have its item.
+Time Trials tab: the seven time trials (one Victory check each), the choice event #110 and the finale. #110 and
+the finale have no checks; they are cleared when the NFSU client reports them as won. A time trial counts as
+open once you have its item.
 Items tab: time trial items, Event Packs, parts, cars and the two finale items you have received.
 
 This pack contains no game assets; all images are plain drawn panels.
