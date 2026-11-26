@@ -287,15 +287,16 @@ function event_open(number)
     if n == nil or n <= 5 or not PACKS_KNOWN then
         return true
     end
-    -- A time trial opens with its own item, every other event with its Event Pack.
+    -- Every event opens with its Event Pack. A time trial is in no pack (0.4.1 and newer seeds): it opens
+    -- with its own item. Seeds from 0.4.0 still have the time trials in packs.
+    local pack = PACK_OF[n]
+    if pack ~= nil then
+        return Tracker:ProviderCountForCode("pack_" .. pack) > 0
+    end
     if TT_ITEM[n] ~= nil then
         return Tracker:ProviderCountForCode(TT_ITEM[n]) > 0
     end
-    local pack = PACK_OF[n]
-    if pack == nil then
-        return true
-    end
-    return Tracker:ProviderCountForCode("pack_" .. pack) > 0
+    return true
 end
 
 -- The finale needs its two key items (stars and time trials are not tracked here).

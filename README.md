@@ -5,7 +5,7 @@
 An [Archipelago](https://archipelago.gg) world and PCSX2 client for **Need for Speed: Underground** (PS2,
 NTSC-U `SLUS-20811`). Race rewards become checks, and parts, cars and Bank come from the multiworld.
 
-**Version 0.4.** Everything listed below was tested in game. Please report bugs in the issues.
+**Version 0.4.1.** Everything listed below was tested in game. Please report bugs in the issues.
 
 ## Features
 

@@ -2,7 +2,7 @@
 
 > **AI notice: the code of this project is not handwritten.** It was written by AI (Claude by Anthropic).
 >
-> **Version 0.4.** Race wins, the reward popups, Event Packs and the race map, the shop, cars, Bank and Death Link
+> **Version 0.4.1.** Race wins, the reward popups, Event Packs and the race map, the shop, cars, Bank and Death Link
 > work with the PCSX2 client.
 
 ## What does randomization do to this game?

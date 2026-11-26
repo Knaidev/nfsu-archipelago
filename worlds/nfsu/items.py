@@ -105,7 +105,7 @@ def _build_table() -> Dict[str, ItemData]:
         add(name, IC.progression, "Event Packs")
     add(EARLY_BANK_ITEM, IC.filler, "Bank")     # 0.4
     add(LARGE_BANK_ITEM, IC.filler, "Bank")     # 0.4
-    for name in TIME_TRIAL_ITEMS.values():      # 0.5: time trials are items, not part of Event Packs
+    for name in TIME_TRIAL_ITEMS.values():      # 0.4.1: time trials are items, not part of Event Packs
         add(name, IC.progression, "Time Trials")
     return table
 
