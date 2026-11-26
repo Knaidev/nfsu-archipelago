@@ -53,6 +53,38 @@ class TestRandomStarterNoVanillaBank(NFSUTestBase):
         self.assertEqual(pool.count(EARLY_BANK_ITEM), 0)
 
 
+class TestTimeTrialItems(NFSUTestBase):
+    """Time trials are items of their own, not part of the Event Packs."""
+    options = {"time_trials_required": 3}
+
+    def test_every_time_trial_has_an_item_and_no_pack(self):
+        from ..items import TIME_TRIAL_ITEMS
+        pool = [i.name for i in self.multiworld.itempool if i.player == self.player]
+        for number, name in TIME_TRIAL_ITEMS.items():
+            self.assertEqual(pool.count(name), 1, name)
+            self.assertFalse(any(number in pack for pack in self.world.packs), number)
+
+    def test_time_trial_needs_its_item(self):
+        from ..items import TIME_TRIAL_ITEMS
+        from ..locations import won_name
+        from ..data.events import EVENTS_BY_NUMBER
+        number, item = next(iter(TIME_TRIAL_ITEMS.items()))
+        location = self.world.get_location(won_name(EVENTS_BY_NUMBER[number]))
+        self.collect_all_but([item])
+        self.assertFalse(location.can_reach(self.multiworld.state))
+        self.collect_by_name(item)
+        self.assertTrue(location.can_reach(self.multiworld.state))
+
+
+class TestNoTimeTrialItemsWithoutPacks(NFSUTestBase):
+    options = {"event_packs": False}
+
+    def test_no_time_trial_items(self):
+        from ..items import TIME_TRIAL_ITEMS
+        pool = {i.name for i in self.multiworld.itempool if i.player == self.player}
+        self.assertFalse(pool & set(TIME_TRIAL_ITEMS.values()))
+
+
 class TestLargeBankBonuses(NFSUTestBase):
     options = {"vanilla_bank_rewards": False, "large_bank_bonuses": True, "early_bank_bonuses": 2}
 

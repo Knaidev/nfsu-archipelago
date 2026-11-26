@@ -25,7 +25,7 @@ from ..data.cars import CARS, UNLOCKABLE_CARS
 from ..data.events import EVENTS_BY_NUMBER, GOAL_EVENT, TIME_TRIALS
 from ..data.parts import PERFORMANCE, VISUAL
 from ..logic import full_stars, reputation_from
-from ..items import (BANK_VALUES, FINALE_ITEM, KEY_ITEM, UNIQUE_ITEM_NAMES, VISUAL_ITEM_LEVELS, car_item_name,
+from ..items import (BANK_VALUES, TIME_TRIAL_ITEMS, FINALE_ITEM, KEY_ITEM, UNIQUE_ITEM_NAMES, VISUAL_ITEM_LEVELS, car_item_name,
                      progressive_name)
 from ..data.events import CAREER_EVENTS
 from ..locations import EVENT_CHECK_IDS, tier_of
@@ -237,6 +237,8 @@ def unlocked_events(names: List[str], reputation: float, s: Settings) -> Set[int
         events = set(START_EVENTS)
         for name in received_packs(names, s):
             events.update(s.event_packs[name])
+        got = set(names)
+        events.update(n for n, item in TIME_TRIAL_ITEMS.items() if item in got)
     return {n for n in events if tier_of(n) in tiers}
 
 
@@ -268,6 +270,8 @@ def pin_problem(number: int, names: List[str], reputation: float, results: Mappi
     if number in results:
         return f"#{number} is already done (won, or its checks were already sent)."
     if number not in unlocked_events(list(names), reputation, s):
+        if s.event_packs is not None and number in TIME_TRIAL_ITEMS:
+            return f"#{number} is not unlocked yet: its time trial item has not arrived."
         if s.event_packs is not None and number not in START_EVENTS and not any(
                 number in s.event_packs[name] for name in received_packs(list(names), s)):
             return f"#{number} is not unlocked yet: its Event Pack has not arrived."
@@ -518,6 +522,7 @@ class GameSync:
         self.results: Dict[int, int] = {}
         self.pinned: List[int] = []                  # /nfsu pin: events that get a race map slot first
         self.packs_seen: Optional[Set[str]] = None
+        self.trials_seen: Optional[Set[str]] = None
 
     # Calls `fn`; a NotMapped address disables the feature for this tick and is reported once.
     def run(self, feature: str, fn: Callable, *args):
@@ -865,7 +870,13 @@ class GameSync:
                 len(packs), len(self.s.event_packs), len(unlocked_events(received, 99.0, self.s)))]
         new = [name for name in self.s.event_packs or () if name in packs - self.packs_seen]
         self.packs_seen = packs
-        return ["%s: %s" % (name, ", ".join(event_label(n) for n in self.s.event_packs[name])) for name in new]
+        lines = ["%s: %s" % (name, ", ".join(event_label(n) for n in self.s.event_packs[name])) for name in new]
+        if self.s.event_packs is not None:
+            trials = {name for name in TIME_TRIAL_ITEMS.values() if name in received}
+            if self.trials_seen is not None:
+                lines += [name for name in TIME_TRIAL_ITEMS.values() if name in trials - self.trials_seen]
+            self.trials_seen = trials
+        return lines
 
     def _apply_death(self) -> str:
         """Applies a received death; returns what happened (for the log)."""

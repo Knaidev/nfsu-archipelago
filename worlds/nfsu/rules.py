@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from BaseClasses import CollectionState
 from worlds.generic.Rules import add_rule, set_rule
 
-from .items import FINALE_ITEM, KEY_ITEM, RACE_WON, TIME_TRIAL_WON, VICTORY
+from .items import FINALE_ITEM, KEY_ITEM, RACE_WON, TIME_TRIAL_ITEMS, TIME_TRIAL_WON, VICTORY
 from .locations import (CHECK_EVENTS, CHOICE_EVENT_DATA, GOAL_LOCATION, TIER_REGION, base_check_names,
                         style_check_name, style_tier, tier_of, won_name)
 from .logic import has_parts, has_stars, part_requirement, star_gate
@@ -67,6 +67,8 @@ def set_all_rules(world: "NFSUWorld") -> None:
     per_event += [(e, [won_name(e)]) for e in CHOICE_EVENT_DATA if e.race_type == "Time Trial"]
     for event, names in per_event:
         pack = event_pack.get(event.number)
+        if pack is None and opts.event_packs and event.number in TIME_TRIAL_ITEMS:
+            pack = TIME_TRIAL_ITEMS[event.number]       # a time trial opens with its own item
         stars = event.reputation_required or 0
         for name in names:
             location = world.get_location(name)

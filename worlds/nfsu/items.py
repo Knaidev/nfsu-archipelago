@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional
 from BaseClasses import Item, ItemClassification as IC
 
 from .data.cars import CARS, STARTER_CARS, UNLOCKABLE_CARS
+from .data.events import EVENTS_BY_NUMBER, TIME_TRIALS
 from .data.parts import PERFORMANCE, UNIQUE_REWARDS, VISUAL
 from .options import TRAPS, option_value
 from .packs import PACK_ITEM_NAMES
@@ -68,6 +69,10 @@ EARLY_BANK_ITEM = "Bank Bonus (2000)"
 LARGE_BANK_ITEM = "Bank Bonus (7000)"
 BANK_VALUES: Dict[str, int] = {**BANK_ITEMS, EARLY_BANK_ITEM: 2000, LARGE_BANK_ITEM: 7000}
 
+#: One item per time trial (with Event Packs on): it opens that time trial, which is not in any Event Pack.
+#: Time trials have no checks; winning them only counts for the goal (and gives the game's unique parts).
+TIME_TRIAL_ITEMS: Dict[int, str] = {n: f"Time Trial: #{n} {EVENTS_BY_NUMBER[n].name}" for n in TIME_TRIALS}
+
 
 def car_item_name(car: str) -> str:
     return f"Car: {car}"
@@ -100,6 +105,8 @@ def _build_table() -> Dict[str, ItemData]:
         add(name, IC.progression, "Event Packs")
     add(EARLY_BANK_ITEM, IC.filler, "Bank")     # 0.4
     add(LARGE_BANK_ITEM, IC.filler, "Bank")     # 0.4
+    for name in TIME_TRIAL_ITEMS.values():      # 0.5: time trials are items, not part of Event Packs
+        add(name, IC.progression, "Time Trials")
     return table
 
 
@@ -149,6 +156,8 @@ def progression_pool(world: "NFSUWorld") -> List[str]:
         names += [progressive_name(cat)] * len(levels)
     names += car_pool(world)
     names += [n for n in world.pack_items if n not in world.starting_packs]
+    if world.options.event_packs:
+        names += list(TIME_TRIAL_ITEMS.values())
     return names
 
 

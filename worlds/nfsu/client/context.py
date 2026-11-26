@@ -9,7 +9,7 @@ from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser,
 from NetUtils import ClientStatus
 
 from ..data.events import TIME_TRIALS
-from ..items import GAME_NAME, ITEM_NAME_TO_ID
+from ..items import GAME_NAME, ITEM_NAME_TO_ID, TIME_TRIAL_ITEMS
 from .interface import NFSUInterface, WrongGame
 from ..logic import full_stars
 from .sync import (MAP_SLOTS, CounterStore, GameSync, Settings, banner_item_name, can_enter, event_label, pin_problem,
@@ -69,6 +69,9 @@ class NFSUCommandProcessor(ClientCommandProcessor):
             self.output(f"Event Packs: {len(got)} of {len(sync.s.event_packs)}")
             for name in got:
                 self.output(f"  {name}: " + ", ".join(event_label(n) for n in sync.s.event_packs[name]))
+        if sync.s.event_packs:
+            trials = [item for item in TIME_TRIAL_ITEMS.values() if item in names]
+            self.output(f"Time trial items: {len(trials)} of {len(TIME_TRIAL_ITEMS)}" + (": " + ", ".join(trials) if trials else ""))
         order = map_events(unlocked_events(names, rep, sync.s), sync.results, rep, sync.pinned)
         self.output(f"Not yet won: {len(order)}; on the race map (max {MAP_SLOTS}):")
         for i, n in enumerate(order):

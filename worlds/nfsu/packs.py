@@ -1,7 +1,7 @@
 """Event packs: career events as Archipelago items.
 
   * #1-#5 are open from the start; #111 keeps its own items ("Finale: #111", "Samantha's Big Tease").
-  * Every other event (#6-#110) is in exactly one "Event Pack N". The pack sizes are the game's own event sets
+  * Every other event (#6-#110, except the time trials) is in exactly one "Event Pack N". The pack sizes are the game's own event sets
     (sets 2-63; sets without checks - time trials, #110 - count with the set before them), but the seed decides
     which events are in which pack, across all tiers (e.g. one pack = #8, #19, #43, #44, #56).
   * If the item pool has no room for all packs, neighbouring packs are merged (fewer, bigger packs).
@@ -17,9 +17,11 @@ START_EVENTS: Tuple[int, ...] = (1, 2, 3, 4, 5)
 #: Same as locations.CHOICE_EVENTS (no import: locations -> items -> packs); a test checks they agree.
 CHOICE_EVENTS = frozenset(e.number for e in CAREER_EVENTS
                           if any("(Choice)" in u.split(":")[0] for u in e.vanilla_unlocks) or e.number == 15)
-#: Events that go into packs: every career event except the start events and the finale.
+#: Events that go into packs: every career event except the start events, the finale and the time trials
+#: (those are items of their own, see items.TIME_TRIAL_ITEMS).
 PACK_EVENTS: Tuple[int, ...] = tuple(e.number for e in CAREER_EVENTS
-                                     if e.number not in START_EVENTS and e.number != GOAL_EVENT)
+                                     if e.number not in START_EVENTS and e.number != GOAL_EVENT
+                                     and e.race_type != "Time Trial")
 
 
 def _vanilla_pack_sizes() -> List[int]:

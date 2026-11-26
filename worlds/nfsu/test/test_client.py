@@ -941,6 +941,21 @@ class TestEventPacks(ClientTestBase):
         # 1-5, 6, 8-13 = 12 enterable; #14 and #20 (1 star) and the rest wait.
         self.assertEqual(opened, {1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13})
 
+    def test_time_trials_open_with_their_own_item(self):
+        from ..items import TIME_TRIAL_ITEMS
+        sync = self.make_sync(event_packs=self.PACKS)
+        sync.tick(list(self.PACKS), set())
+        self.assertNotIn(7, self.opened(), "a time trial is not in any pack")
+        sync = self.make_sync(event_packs=self.PACKS, time_trials_required=1)
+        sync.tick(list(self.PACKS) + [TIME_TRIAL_ITEMS[7]], set())
+        self.assertIn(7, self.opened())
+        self.assertNotIn(15, self.opened())
+
+    def test_time_trial_pin_problem_names_the_item(self):
+        from ..client.sync import pin_problem
+        s = Settings(event_packs=self.PACKS)
+        self.assertIn("time trial item", pin_problem(7, list(self.PACKS), 99.0, {}, s))
+
     def test_won_events_free_their_slot(self):
         sync = self.make_sync(event_packs=self.PACKS)
         for n in (1, 2, 3):
