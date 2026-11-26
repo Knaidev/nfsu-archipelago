@@ -25,6 +25,11 @@ parts and cars with Bank.
 pack can hold e.g. #8, #19, #43, #44 and #56. You start with a few packs (option *Starting Event Packs*); the
 client lists every new pack in its log. With *Event Packs* off, all events are open from the start.
 
+**Time trials are items, too.** The seven time trials (#7, #15, #26, #47, #68, #77, #96) are not in any Event
+Pack: each one opens with its own item ("Time Trial: #7 TJ's Time Trial" and so on). They have no checks;
+winning them only counts for the goal (*Time Trials Required*) and gives you the game's unique parts. With
+*Event Packs* off, they are open from the start.
+
 **Reputation stars** come from the visual part items you received (full stars, rounded down, using the game's
 star value of each level). Tournaments still need their original stars in game (e.g. #30 needs 2) and the
 finale needs 5. With the option *Star Gates* on, the events are also grouped into four tiers (1–29, 30–65,
@@ -56,7 +61,7 @@ Alternatively, the goal can be to win a set number of events.
   window tint, lights, paint, decals – Level 2, then 3)
 - Cars: the 15 cars that normally unlock through events; with **Starting Car** random_starter / random_car you
   start with one random car and all others are items
-- Event Packs (see above)
+- Event Packs and one item per time trial (see above)
 - Bank bonuses. By default races also pay their normal Bank. With *Vanilla Bank Rewards* off, races pay nothing
   and all Bank comes from these items: you start with 0 Bank (plus *Starting Bank*), and the options *Large
   Bank Bonuses* (every Bank item is 7,000) and *Early Bank Bonuses* (up to two 2,000 items on your own starting

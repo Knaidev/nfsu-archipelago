@@ -15,7 +15,8 @@ NTSC-U `SLUS-20811`). Race rewards become checks, and parts, cars and Bank come 
   The client patches the shop and the car lot so that only received parts and cars can be bought.
 - **Events as items:** #1–#5 are open from the start, all other events come in "Event Packs" whose contents
   the seed decides. Tournaments and the finale need reputation stars from received visual parts; optional
-  star gates also lock whole tiers. The client fills the race map's 12 slots (`/nfsu events`, `/nfsu pin`).
+  star gates also lock whole tiers. The seven time trials are items of their own ("Time Trial: ..."), not part
+  of the packs. The client fills the race map's 12 slots (`/nfsu events`, `/nfsu pin`).
 - **Tournaments** are the hard part of a run: several races in a row against strong opponents. Buy and install
   every upgrade you have received before you enter one.
 - **Goal:** win the finale "Wrath of Eddie" (needs the "Finale: #111" item, "Samantha's Big Tease", 5 stars and,

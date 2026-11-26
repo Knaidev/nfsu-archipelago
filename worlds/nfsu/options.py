@@ -31,7 +31,8 @@ class RacesForGoal(Range):
 
 
 class TimeTrialsRequired(Range):
-    """How many of the 7 time trials must be won (any difficulty) before the finale unlocks."""
+    """How many of the 7 time trials must be won (any difficulty) before the finale unlocks. With Event Packs on,
+    each time trial opens with its own item ("Time Trial: ..."); they are not part of the Event Packs."""
     display_name = "Time Trials Required"
     range_start = 0
     range_end = 7
