@@ -3,12 +3,12 @@ from BaseClasses import CollectionState
 
 from . import NFSUTestBase
 from ..data.parts import PERFORMANCE
-from ..items import BANK_VALUES, FINALE_ITEM, KEY_ITEM, REQUIRED_BANK, TIME_TRIAL_WON
+from ..items import BANK_VALUES, BASE_ID, FINALE_ITEM, KEY_ITEM, REQUIRED_BANK, TIME_TRIAL_WON
 from ..locations import (CHECK_EVENTS, CHOICE_EVENTS, GOAL_LOCATION, LOCATION_NAME_TO_ID, base_check_names,
                          tier_of)
 from ..logic import max_reputation, starting_reputation
 
-BASE_CHECKS = 139  # vanilla rewards + "Victory" of the 102 events with checks
+BASE_CHECKS = 146  # vanilla rewards + "Victory" of the 109 events with checks (7 time trials: one Victory each)
 
 
 def _real_locations(world):
@@ -24,11 +24,16 @@ class TestCountsEasy(NFSUTestBase):
         own_items = [i for i in self.multiworld.itempool if i.player == self.player]
         self.assertEqual(len(own_items), BASE_CHECKS)
 
-    def test_choice_events_have_no_checks(self):
+    def test_time_trials_have_one_victory_check_and_110_none(self):
         names = {loc.name for loc in _real_locations(self.multiworld.worlds[self.player])}
-        for n in CHOICE_EVENTS:
-            self.assertFalse(any(name.startswith(f"#{n} ") for name in names), n)
         self.assertEqual(sorted(CHOICE_EVENTS), [7, 15, 26, 47, 68, 77, 96, 110])
+        for n in (7, 15, 26, 47, 68, 77, 96):
+            own = [name for name in names if name.startswith(f"#{n} ")]
+            self.assertEqual(len(own), 1, n)
+            self.assertTrue(own[0].endswith(" - Victory"), own)
+            # New ids in the free slot of the event: no id of an older version moves.
+            self.assertEqual(LOCATION_NAME_TO_ID[own[0]], BASE_ID + n * 16)
+        self.assertFalse(any(name.startswith("#110 ") for name in names))
 
     def test_rewards_are_checks(self):
         six = next(e for e in CHECK_EVENTS if e.number == 6)

@@ -241,12 +241,19 @@ class TestChecksAndEvents(ClientTestBase):
         self.server.event(3, status=2, diff=0)
         self.assertEqual(sync.tick([], C(3)).new_checks, set())
 
-    def test_choice_events_open_but_send_nothing(self):
-        sync = self.make_sync(event_packs={"Event Pack 1": [7, 15]})
+    def test_time_trial_win_sends_its_victory_check(self):
+        from ..items import TIME_TRIAL_ITEMS
+        sync = self.make_sync(event_packs={"Event Pack 1": [10]})
         self.server.event(7, status=2, diff=2)                 # TJ's Time Trial won on Hard
-        self.assertEqual(sync.tick(["Event Pack 1"], set()).new_checks, set())
-        self.assertEqual(self.server.event(7)[0], MAP.event_status_won, "not re-opened, no checks")
+        self.assertEqual(len(C(7)), 1)
+        self.assertEqual(sync.tick([TIME_TRIAL_ITEMS[7], TIME_TRIAL_ITEMS[15]], set()).new_checks, C(7))
+        self.assertEqual(self.server.event(7)[0], MAP.event_status_won, "won events are never re-opened")
         self.assertEqual(self.server.event(15)[0], MAP.event_status_available, "time trials are playable")
+
+    def test_choice_event_110_sends_nothing(self):
+        sync = self.make_sync(event_packs={"Event Pack 1": [110]})
+        self.server.event(110, status=2, diff=0)
+        self.assertEqual(sync.tick(["Event Pack 1"], set()).new_checks, set())
 
     def test_star_gates_open_tiers(self):
         sync = self.make_sync(event_packs={"Event Pack 1": [10, 31, 70, 92]})
@@ -1086,12 +1093,43 @@ class TestRewardPopups(ClientTestBase):
         self.assertEqual(self.text(nodes[0]),
                          "ARCHIPELAGO! You found:^Car: Mazda RX-7 for Alice^You have 200 added to your Bank.")
 
-    def test_popups_written_once_and_choice_events_untouched(self):
+    def test_choice_event_110_popups_untouched(self):
         sync = self.make_sync()
-        self.server.event(7, status=3)                       # time trial: no checks
+        self.server.event(110, status=3)                     # #110: no checks
         nodes = self.build(self.SIX[:2])
         self.assertEqual(sync.tick([], set()).new_checks, set())
         self.assertEqual(self.text(nodes[1]), self.SIX[1])
+
+    TT_UNIQUE = "Congratulations!^You have unlocked^a unique part."
+
+    def test_time_trial_item_only_in_bank_popup(self):
+        """The unique part popup is the player's own pick: other players' items never go there."""
+        sync = self.make_sync()
+        sync.describe = lambda i: "Hookshot for Bob"
+        self.server.event(7, status=3)
+        nodes = self.build([self.TT_UNIQUE, "Congratulations!  You have 1000 added to your Bank."])
+        self.assertEqual(sync.tick([], set()).new_checks, C(7))
+        self.assertEqual(self.text(nodes[0]), self.TT_UNIQUE)
+        self.assertEqual(self.text(nodes[1]),
+                         "ARCHIPELAGO! You found:^Hookshot for Bob^You have 1000 added to your Bank.")
+
+    def test_time_trial_without_bank_popup_writes_nothing(self):
+        sync = self.make_sync()
+        sync.describe = lambda i: "Hookshot for Bob"
+        self.server.event(7, status=3)
+        nodes = self.build([self.TT_UNIQUE])
+        self.assertEqual(sync.tick([], set()).new_checks, C(7))
+        self.assertEqual(self.text(nodes[0]), self.TT_UNIQUE)
+
+    def test_time_trial_of_an_older_seed_keeps_its_popups(self):
+        """Seeds before 0.4.2 have no time trial checks: the Bank popup must not promise an item."""
+        sync = self.make_sync()
+        sync.seed_locations = set(C(6))
+        self.server.event(7, status=3)
+        bank = "Congratulations!  You have 1000 added to your Bank."
+        nodes = self.build([self.TT_UNIQUE, bank])
+        sync.tick([], set())
+        self.assertEqual(self.text(nodes[1]), bank)
 
     def test_no_popups_no_win(self):
         sync = self.make_sync()

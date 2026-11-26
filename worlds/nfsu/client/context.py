@@ -186,6 +186,7 @@ class NFSUContext(CommonContext):
             async_start(self.update_death_link(settings.death_link))
             # Learn what lies on every own check, for the in-game reward popups (no hints are created).
             own = sorted(set(args.get("missing_locations", [])) | set(args.get("checked_locations", [])))
+            self.sync.seed_locations = set(own)
             async_start(self.send_msgs([{"cmd": "LocationScouts", "locations": own, "create_as_hint": 0}]))
 
     def on_print_json(self, args: Dict[str, Any]) -> None:

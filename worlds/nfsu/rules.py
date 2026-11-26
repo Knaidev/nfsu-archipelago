@@ -5,7 +5,7 @@ from worlds.generic.Rules import add_rule, set_rule
 
 from .items import FINALE_ITEM, KEY_ITEM, RACE_WON, TIME_TRIAL_ITEMS, TIME_TRIAL_WON, VICTORY
 from .locations import (CHECK_EVENTS, CHOICE_EVENT_DATA, GOAL_LOCATION, TIER_REGION, base_check_names,
-                        style_check_name, style_tier, tier_of, won_name)
+                        counts_as_race, style_check_name, style_tier, tier_of, won_name)
 from .logic import has_parts, has_stars, part_requirement, star_gate
 from .options import option_value
 from .packs import pack_of
@@ -49,7 +49,7 @@ def set_all_rules(world: "NFSUWorld") -> None:
         base = _parts_rule(world, tier_of(event.number), event.race_type)
         if base is None:
             continue
-        for name in base_check_names(event) + ([won_name(event)] if race_count_goal else []):
+        for name in base_check_names(event) + ([won_name(event)] if race_count_goal and counts_as_race(event) else []):
             set_rule(world.get_location(name), base)
     for event in CHOICE_EVENT_DATA:
         rule = _parts_rule(world, tier_of(event.number), event.race_type)
@@ -63,7 +63,8 @@ def set_all_rules(world: "NFSUWorld") -> None:
     # Event Packs: an event's checks need its pack. Tournaments need their reputation stars in game (record
     # +24 = events.py reputation_required, seen in game), whatever the star gate options say.
     event_pack = pack_of(world.packs)
-    per_event = [(e, base_check_names(e) + ([won_name(e)] if race_count_goal else [])) for e in CHECK_EVENTS]
+    per_event = [(e, base_check_names(e) + ([won_name(e)] if race_count_goal and counts_as_race(e) else []))
+                 for e in CHECK_EVENTS]
     per_event += [(e, [won_name(e)]) for e in CHOICE_EVENT_DATA if e.race_type == "Time Trial"]
     for event, names in per_event:
         pack = event_pack.get(event.number)

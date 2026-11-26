@@ -419,16 +419,21 @@ def reward_popup_texts(event: int, nodes: List[tuple], describe: Callable[[int],
     The Bank popup ("... added to your Bank.") keeps its Bank line; every unlock popup ("You have unlocked …", a
     vanilla unlock that Archipelago replaces) gets one found item. Other popups (live #25: magazine cover, "You are
     now ranked 10th in Drift race mode.") keep the game's text. Items left over (e.g. events whose rewards have no
-    popup of their own) are listed in the Bank popup. Choice events have no checks – their popups stay untouched."""
+    popup of their own) are listed in the Bank popup. #110 has no checks – its popups stay untouched. A time trial
+    keeps its unique part popups (the player's own pick): its found item goes into the Bank popup only, and without
+    one it is shown in the client alone."""
     ids = list(EVENT_CHECK_IDS.get(event, ()))
     if not ids:
         return []
     lines = [describe(i) for i in ids]
     bank_nodes = [(n, t) for n, t in nodes if "added to your Bank" in t]
     others = [(n, t) for n, t in nodes if (n, t) not in bank_nodes]
-    unlock_nodes = [(n, t) for n, t in others if is_unlock_popup(t)]
-    if not unlock_nodes and not bank_nodes:
-        unlock_nodes = others[:1]          # no unlock or Bank popup: the items still need a place
+    if event in TIME_TRIALS:
+        unlock_nodes = []
+    else:
+        unlock_nodes = [(n, t) for n, t in others if is_unlock_popup(t)]
+        if not unlock_nodes and not bank_nodes:
+            unlock_nodes = others[:1]      # no unlock or Bank popup: the items still need a place
     writes = []
     for (node, _), line in zip(unlock_nodes, lines):
         writes.append((node, f"{POPUP_TITLE}^You found:^{line}"))
@@ -495,6 +500,8 @@ class GameSync:
         self.popups_written_for: Optional[tuple] = None
         #: location id -> "Turbo Upgrade" / "Hookshot for Bob"; set by the network client (scouted locations).
         self.describe: Callable[[int], str] = lambda location_id: "an Archipelago item"
+        #: All check ids of this seed (set by the network client); seeds before 0.4.2 lack the time trial checks.
+        self.seed_locations: Optional[Set[int]] = None
         self.patch_logged: Optional[bool] = None
         self.shop_patch_logged: Optional[bool] = None
         self.car_patch_logged: Optional[bool] = None
@@ -733,6 +740,10 @@ class GameSync:
         if self.popups_written_for != (owner, event):
             self.popups_written_for = (owner, event)
             ids = EVENT_CHECK_IDS.get(event, ())
+            if event in TIME_TRIALS:
+                logger.info("NFSU: #%d reward popups: %s", event, " | ".join(t.replace("^", " / ") for _, t in nodes))
+                if self.seed_locations is not None and not set(ids) & self.seed_locations:
+                    return event        # a seed from before 0.4.2: no check on this time trial, popups stay
             unlocks = [t for _, t in nodes if is_unlock_popup(t)]
             if ids and len(unlocks) > len(ids):
                 # More vanilla unlock popups than checks: log what the game wanted to show.

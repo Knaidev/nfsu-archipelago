@@ -65,15 +65,33 @@ class TestTimeTrialItems(NFSUTestBase):
             self.assertFalse(any(number in pack for pack in self.world.packs), number)
 
     def test_time_trial_needs_its_item(self):
+        """Both the win (for the goal) and the Victory check need the time trial's own item."""
         from ..items import TIME_TRIAL_ITEMS
-        from ..locations import won_name
+        from ..locations import base_check_names, won_name
         from ..data.events import EVENTS_BY_NUMBER
         number, item = next(iter(TIME_TRIAL_ITEMS.items()))
-        location = self.world.get_location(won_name(EVENTS_BY_NUMBER[number]))
+        event = EVENTS_BY_NUMBER[number]
+        locations = [self.world.get_location(won_name(event))] + [self.world.get_location(n)
+                                                                    for n in base_check_names(event)]
         self.collect_all_but([item])
-        self.assertFalse(location.can_reach(self.multiworld.state))
+        for location in locations:
+            self.assertFalse(location.can_reach(self.multiworld.state), location.name)
         self.collect_by_name(item)
-        self.assertTrue(location.can_reach(self.multiworld.state))
+        for location in locations:
+            self.assertTrue(location.can_reach(self.multiworld.state), location.name)
+
+
+class TestRaceCountGoalWithTimeTrialChecks(NFSUTestBase):
+    """race_count goal: a time trial win places "Time Trial Won" once, and no "Race Won" besides its check."""
+    options = {"goal": "race_count", "races_for_goal": 50}
+
+    def test_one_won_location_per_time_trial(self):
+        from ..data.events import TIME_TRIALS, EVENTS_BY_NUMBER
+        from ..locations import won_name
+        names = [loc.name for loc in self.multiworld.get_locations(self.player)]
+        for n in TIME_TRIALS:
+            self.assertEqual(names.count(won_name(EVENTS_BY_NUMBER[n])), 1, n)
+            self.assertEqual(self.world.get_location(won_name(EVENTS_BY_NUMBER[n])).item.name, "Time Trial Won")
 
 
 class TestNoTimeTrialItemsWithoutPacks(NFSUTestBase):

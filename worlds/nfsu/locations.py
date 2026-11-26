@@ -54,8 +54,9 @@ def _reward_label(unlock: str) -> str:
 
 
 def base_check_names(event: EventData) -> List[str]:
-    """Checks sent for the first win of an event (any difficulty)."""
-    rewards = [_reward_label(u) for u in event.vanilla_unlocks]
+    """Checks sent for the first win of an event (any difficulty). A time trial has one "Victory" check: its
+    vanilla reward (a unique part the player picks) stays with the game."""
+    rewards = [] if event.race_type == "Time Trial" else [_reward_label(u) for u in event.vanilla_unlocks]
     if not rewards:
         rewards = ["Victory"]
     return [f"#{event.number} {event.name} - {r}" for r in rewards]
@@ -70,11 +71,18 @@ def style_check_name(index: int) -> str:
     return f"Style Points {m.points:,} - {m.reward}"
 
 
-#: Events that carry checks: every career event except the goal and the choice events.
+#: Events that carry checks: every career event except the goal and #110. Time trials (choice events too) have
+#: one "Victory" check since 0.4.2 (new location IDs, older seeds just don't have them).
 CHECK_EVENTS: List[EventData] = [e for e in CAREER_EVENTS
-                                 if e.number != GOAL_EVENT and e.number not in CHOICE_EVENTS]
-#: Events that are raced but carry no checks (time trials count for the finale).
+                                 if e.number != GOAL_EVENT
+                                 and (e.number not in CHOICE_EVENTS or e.race_type == "Time Trial")]
+#: Choice events (time trials + #110); a time trial win also counts for the finale ("Time Trial Won").
 CHOICE_EVENT_DATA: List[EventData] = [e for e in CAREER_EVENTS if e.number in CHOICE_EVENTS]
+
+
+def counts_as_race(event: EventData) -> bool:
+    """For the race_count goal a won event places "Race Won" – except a time trial ("Time Trial Won")."""
+    return event.race_type != "Time Trial"
 GOAL_EVENT_DATA = next(e for e in CAREER_EVENTS if e.number == GOAL_EVENT)
 GOAL_LOCATION = f"#{GOAL_EVENT_DATA.number} {GOAL_EVENT_DATA.name}"
 
@@ -128,10 +136,10 @@ def create_all_locations(world: "NFSUWorld") -> None:
             loc = add(region, name, LOCATION_NAME_TO_ID[name])
             if exclusion_type(event) in excluded:
                 loc.progress_type = LocationProgressType.EXCLUDED
-        if race_count_goal:
+        if race_count_goal and counts_as_race(event):
             add(region, won_name(event), None).place_locked_item(create_event(world, RACE_WON))
 
-    # Choice events: no checks, but time trial wins count for the finale.
+    # Time trial wins count for the finale (and for the race_count goal).
     for event in CHOICE_EVENT_DATA:
         if event.race_type == "Time Trial":
             region = world.get_region(TIER_REGION[tier_of(event.number)])

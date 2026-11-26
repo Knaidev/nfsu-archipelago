@@ -40,8 +40,8 @@ class TimeTrialsRequired(Range):
 
 
 # The checks of an event are its vanilla rewards (shown in the game's reward popup) – or one "Victory" check for
-# events without a reward – sent for the first win on any difficulty. Time trials and #110 (rewards you choose
-# from) have no checks. There are no extra checks per difficulty.
+# events without a reward – sent for the first win on any difficulty. Time trials have one "Victory" check (their
+# unique part choice stays the game's), #110 has none. There are no extra checks per difficulty.
 
 
 class StylePointChecks(Range):
